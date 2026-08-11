@@ -1,0 +1,339 @@
+
+:root {
+  --primary-green: #004b49;
+  --primary-green-light: #00605d;
+  --primary-green-dark: #003635;
+  --accent-gold: #d4af37;
+  --accent-gold-light: #e5c158;
+  --accent-gold-dark: #85660f;
+  --background-ivory: #faf9f6;
+  --background-white: #ffffff;
+  --text-dark: #1e293b;
+  --text-muted: #64748b;
+  --text-light: #f8fafc;
+  --border-color: #e2e8f0;
+  
+  --font-serif: 'Cormorant Garamond', serif;
+  --font-sans: 'Inter', sans-serif;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+  --shadow-gold: 0 4px 14px 0 rgba(212, 175, 55, 0.15);
+  
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: var(--font-sans);
+  background-color: var(--background-ivory);
+  color: var(--text-dark);
+  line-height: 1.6;
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  width: 100% !important;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  color: var(--primary-green);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: var(--transition-smooth);
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: var(--transition-smooth);
+}
+
+/* Responsive Containers & Avoid Overlaps */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background-ivory);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary-green);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-green-light);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes envelopeOpen {
+  0% { transform: rotateX(0deg); }
+  100% { transform: rotateX(180deg); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease forwards;
+}
+
+/* Standard Premium UI Components */
+.btn-primary {
+  background-color: var(--primary-green);
+  color: var(--text-light);
+  padding: 0.75rem 1.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--primary-green);
+}
+
+@media (hover: hover) {
+  .btn-primary:hover {
+    background-color: var(--primary-green-light);
+    border-color: var(--primary-green-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--primary-green);
+  padding: 0.75rem 1.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1.5px solid var(--primary-green);
+}
+
+@media (hover: hover) {
+  .btn-secondary:hover {
+    background-color: rgba(0, 75, 73, 0.04);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.btn-gold {
+  background-color: var(--accent-gold);
+  color: var(--primary-green-dark);
+  padding: 0.75rem 1.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--accent-gold);
+}
+
+@media (hover: hover) {
+  .btn-gold:hover {
+    background-color: var(--accent-gold-light);
+    border-color: var(--accent-gold-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-gold);
+  }
+}
+
+.luxury-card {
+  background: var(--background-white);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+  transition: var(--transition-smooth);
+}
+
+@media (hover: hover) {
+  .luxury-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--accent-gold);
+  }
+}
+
+/* ==========================================================================
+   Responsive Grid & Device Layout Overrides
+   ========================================================================== */
+@media (max-width: 900px) {
+  /* Enforce single column grids to prevent overlapping text and layouts */
+  .shop-grid,
+  .checkout-grid,
+  .atelier-grid,
+  .profile-grid,
+  .hero-grid,
+  .promo-grid,
+  .atelier-admin-grid,
+  .admin-catalog-grid,
+  .contact-grid,
+  .cart-grid {
+    grid-template-columns: 1fr !important;
+    gap: 2rem !important;
+  }
+
+  .form-row,
+  .admin-metrics-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Text and button adjustments on smaller screens */
+  .hero-text-container {
+    text-align: center;
+  }
+}
+
+@media (max-width: 650px) {
+  .announcement-right {
+    display: none !important;
+  }
+  .announcement-left {
+    width: 100% !important;
+    text-align: center !important;
+    font-size: 0.68rem !important;
+    letter-spacing: 0.5px !important;
+  }
+  
+  /* Elegant symmetric mobile side padding (left 1.25rem & right 1.25rem) for Shop and Atelier */
+  .container {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    box-sizing: border-box !important;
+  }
+
+  .shop-grid,
+  .atelier-grid {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  .atelier-summary-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    gap: 0.15rem !important;
+  }
+  .atelier-summary-row strong,
+  .atelier-summary-row span {
+    text-align: left !important;
+  }
+
+  .product-card-footer {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+  .product-card-footer button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+  
+  .mobile-categories {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    white-space: nowrap !important;
+    padding-bottom: 0.75rem !important;
+    margin-bottom: 1rem !important;
+    max-width: 100% !important;
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+  }
+  
+  /* Global heading clamps to prevent vertical single-word wrapping on iPhones */
+  h1 {
+    font-size: 2.2rem !important;
+    line-height: 1.2 !important;
+  }
+  h2 {
+    font-size: 1.7rem !important;
+    line-height: 1.25 !important;
+  }
+  h3 {
+    font-size: 1.35rem !important;
+  }
+  
+  /* Form components sizing on mobile screens */
+  input, select, textarea {
+    font-size: 0.85rem !important;
+    padding: 0.6rem !important;
+  }
+  
+  .btn-primary, .btn-secondary, .btn-gold {
+    padding: 0.7rem 1.25rem !important;
+    font-size: 0.85rem !important;
+  }
+}
+
+/* Auto-fluid image, media, and form elements across all screen sizes */
+img, video, svg, input, select, textarea, button {
+  max-width: 100%;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Tapping/Active Touch feedback for mobile devices (no sticky hover) */
+@media (hover: none) {
+  .luxury-card:active,
+  .btn-primary:active,
+  .btn-secondary:active,
+  .btn-gold:active,
+  .occ-circle:active,
+  .insta-img:active {
+    transform: scale(0.96) !important;
+    opacity: 0.85 !important;
+    transition: transform 0.15s ease !important;
+  }
+}
+
