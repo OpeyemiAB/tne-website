@@ -119,14 +119,14 @@ const mockStore = {
   }))
 };
 
-// Multi-device Database State Syncer
+// Multi-device Central Cloud Syncer (/api/sync)
 const syncMock = () => {
   localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
   localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
   localStorage.setItem('tne_users', JSON.stringify(mockStore.users));
   localStorage.setItem('tne_atelier_options', JSON.stringify(mockStore.atelierOptions));
 
-  // Sync to shared cloud database key so phones and laptops share live state
+  // Push updates to central cloud API so phones, laptops, and all admin devices sync instantly
   try {
     const payload = {
       orders: mockStore.orders,
@@ -134,7 +134,7 @@ const syncMock = () => {
       users: mockStore.users,
       atelierOptions: mockStore.atelierOptions
     };
-    fetch('https://kvdb.io/WvYx29N1T5yA88Qx7Z3b5p/tne_store_state', {
+    fetch('/api/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -142,10 +142,10 @@ const syncMock = () => {
   } catch (e) {}
 };
 
-// Initial Cloud Fetch on Application Launch
+// Initial & Periodic Cloud Fetch across all devices
 export const syncCloudStateOnLoad = async () => {
   try {
-    const res = await fetch('https://kvdb.io/WvYx29N1T5yA88Qx7Z3b5p/tne_store_state');
+    const res = await fetch('/api/sync');
     if (res.ok) {
       const data = await res.json();
       if (data) {
@@ -163,6 +163,11 @@ export const syncCloudStateOnLoad = async () => {
   } catch (e) {}
 };
 syncCloudStateOnLoad();
+
+// Auto-sync in background every 8 seconds for live multi-device updates
+if (typeof window !== 'undefined') {
+  setInterval(syncCloudStateOnLoad, 8000);
+}
 
 // Reset orders and users for clean start
 export const resetDatabaseOrdersAndUsers = async () => {
