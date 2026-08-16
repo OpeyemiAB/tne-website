@@ -46,39 +46,46 @@ export default function AdminDashboard() {
     navigate('/');
   };
 
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
   const handleImageFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Read and compress image if needed
+    setIsUploadingImage(true);
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 800;
+        const MAX_DIM = 450;
         let width = img.width;
         let height = img.height;
 
         if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
+          if (width > MAX_DIM) {
+            height *= MAX_DIM / width;
+            width = MAX_DIM;
           }
         } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
+          if (height > MAX_DIM) {
+            width *= MAX_DIM / height;
+            height = MAX_DIM;
           }
         }
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        // Ultra-lightweight JPEG compression (~20KB) to ensure local storage sync never fails
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
         setProdImage(dataUrl);
-        showToast("Product image uploaded successfully!", "success");
+        setIsUploadingImage(false);
+        showToast("Product photo compressed and ready!", "success");
+      };
+      img.onerror = () => {
+        setIsUploadingImage(false);
+        showToast("Error processing photo file.", "error");
       };
       img.src = event.target.result;
     };
@@ -87,6 +94,10 @@ export default function AdminDashboard() {
 
   const handleCreateProduct = async (e) => {
     e.preventDefault();
+    if (isUploadingImage) {
+      showToast("Please wait for photo compression to complete.", "info");
+      return;
+    }
     const finalImage = (prodImage || '').trim() || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80';
     if (!prodName || !prodPrice) {
       showToast("Please provide product name and price.", "error");
@@ -571,8 +582,18 @@ export default function AdminDashboard() {
                 </label>
               </div>
 
-              <button type="submit" className="btn-gold" style={{ justifyContent: 'center', padding: '0.75rem' }}>
-                <Plus size={18} /> Upload Product
+              <button 
+                type="submit" 
+                className="btn-gold" 
+                disabled={isUploadingImage}
+                style={{ 
+                  justifyContent: 'center', 
+                  padding: '0.75rem',
+                  opacity: isUploadingImage ? 0.6 : 1,
+                  cursor: isUploadingImage ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {isUploadingImage ? '⏳ Compressing Photo...' : <><Plus size={18} /> Upload Product</>}
               </button>
             </form>
           </div>

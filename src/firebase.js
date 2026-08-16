@@ -119,12 +119,28 @@ const mockStore = {
   }))
 };
 
-// Database state syncer
+// Database state syncer with quota protection
 const syncMock = () => {
-  localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
-  localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
-  localStorage.setItem('tne_users', JSON.stringify(mockStore.users));
-  localStorage.setItem('tne_atelier_options', JSON.stringify(mockStore.atelierOptions));
+  try {
+    localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
+    localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
+    localStorage.setItem('tne_users', JSON.stringify(mockStore.users));
+    localStorage.setItem('tne_atelier_options', JSON.stringify(mockStore.atelierOptions));
+  } catch (err) {
+    console.warn("Storage quota limit reached. Cleaning heavy image buffers to preserve inventory...", err);
+    try {
+      const optimizedProducts = mockStore.products.map(p => ({
+        ...p,
+        image: (p.image && p.image.length > 80000) 
+          ? 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80' 
+          : p.image
+      }));
+      localStorage.setItem('tne_products', JSON.stringify(optimizedProducts));
+      localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
+    } catch (e) {
+      console.error("Critical storage write failure:", e);
+    }
+  }
 };
 
 // Reset orders and users for clean start
@@ -207,6 +223,15 @@ export const getProductsFromDb = async () => {
     const querySnapshot = await getDocs(collection(db, "products"));
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } else {
+    const stored = localStorage.getItem('tne_products');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          mockStore.products = parsed;
+        }
+      } catch (e) {}
+    }
     return mockStore.products;
   }
 };
