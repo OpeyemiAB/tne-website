@@ -46,18 +46,62 @@ export default function AdminDashboard() {
     navigate('/');
   };
 
+  const handleImageFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Read and compress image if needed
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setProdImage(dataUrl);
+        showToast("Product image uploaded successfully!", "success");
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleCreateProduct = async (e) => {
     e.preventDefault();
-    if (!prodName || !prodPrice || !prodImage) return;
+    const finalImage = (prodImage || '').trim() || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80';
+    if (!prodName || !prodPrice) {
+      showToast("Please provide product name and price.", "error");
+      return;
+    }
 
     const newProd = {
       name: prodName,
       price: Number(prodPrice),
-      image: prodImage,
+      image: finalImage,
       category: prodCategory,
       description: prodDescription,
       features: prodFeatures.split('\n').filter(f => f.trim() !== ''),
-      customizable: prodCustomizable
+      customizable: prodCustomizable,
+      inStock: true
     };
 
     await addProduct(newProd);
@@ -445,16 +489,52 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', marginBottom: '0.25rem' }}>Image URL</label>
-                <input 
-                  type="url" 
-                  value={prodImage} 
-                  onChange={e => setProdImage(e.target.value)} 
-                  required
-                  placeholder="https://images.unsplash.com/..."
-                  style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border-color)', borderRadius: '4px', outline: 'none' }}
-                />
+              {/* Product Image Section: Device File Upload OR Image URL */}
+              <div style={{ backgroundColor: 'var(--background-ivory)', border: '1.5px dashed var(--accent-gold)', borderRadius: '8px', padding: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary-green)', marginBottom: '0.4rem' }}>
+                  📷 Product Photo (Upload from Phone/Laptop OR Paste URL)
+                </label>
+                
+                {/* File picker */}
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Option A: Select photo from device</span>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleImageFileUpload}
+                    style={{ fontSize: '0.8rem', width: '100%' }}
+                  />
+                </div>
+
+                {/* URL input */}
+                <div>
+                  <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Option B: Paste Image Web URL</span>
+                  <input 
+                    type="text" 
+                    value={prodImage} 
+                    onChange={e => setProdImage(e.target.value)} 
+                    placeholder="https://images.unsplash.com/..."
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px', outline: 'none', fontSize: '0.8rem', backgroundColor: '#fff' }}
+                  />
+                </div>
+
+                {/* Instant Thumbnail Preview */}
+                {prodImage && (
+                  <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', backgroundColor: '#fff', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                    <img src={prodImage} alt="Product Preview" style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
+                    <div style={{ flex: 1, fontSize: '0.75rem', color: 'var(--primary-green)', fontWeight: 'bold' }}>
+                      ✓ Image Ready for Catalog
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => setProdImage('')}
+                      style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+                      title="Clear photo"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -526,7 +606,55 @@ export default function AdminDashboard() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {products.map(p => (
                 <div key={p.id} style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem', alignItems: 'center' }}>
-                  <img src={p.image} alt={p.name} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
+                  <div style={{ position: 'relative' }}>
+                    <img src={p.image || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80'} alt={p.name} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
+                    <label 
+                      style={{
+                        position: 'absolute',
+                        bottom: '-4px',
+                        right: '-4px',
+                        backgroundColor: 'var(--accent-gold)',
+                        color: 'var(--primary-green-dark)',
+                        borderRadius: '50%',
+                        width: '20px',
+                        height: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.65rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }}
+                      title="Upload new image from device"
+                    >
+                      📷
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (evt) => {
+                            const img = new Image();
+                            img.onload = () => {
+                              const canvas = document.createElement('canvas');
+                              canvas.width = 600;
+                              canvas.height = 600;
+                              const ctx = canvas.getContext('2d');
+                              ctx.drawImage(img, 0, 0, 600, 600);
+                              const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                              editProduct(p.id, { image: dataUrl });
+                              showToast(`Photo updated for ${p.name}!`, "success");
+                            };
+                            img.src = evt.target.result;
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{p.name}</div>
                     <span style={{ fontSize: '0.65rem', backgroundColor: 'var(--background-ivory)', color: 'var(--text-muted)', padding: '0.1rem 0.35rem', borderRadius: '4px', display: 'inline-block', marginTop: '0.2rem' }}>
