@@ -1,33 +1,65 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 
-// Standard Firebase config - users can replace this with their actual config credentials
+// User Official Live Firebase configuration
 const firebaseConfig = {
-  apiKey: "MOCK_API_KEY_TNE_UX_PORTFOLIO",
-  authDomain: "tne-luxury.firebaseapp.com",
-  projectId: "tne-luxury",
-  storageBucket: "tne-luxury.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:mock123"
+  apiKey: "AIzaSyC53LQNidhB-X2RgsalDRg7Cz764oRjiks",
+  authDomain: "tne-website-62f66.firebaseapp.com",
+  projectId: "tne-website-62f66",
+  storageBucket: "tne-website-62f66.firebasestorage.app",
+  messagingSenderId: "1024497917580",
+  appId: "1:1024497917580:web:78a0ed4fe1be388f6865a9",
+  measurementId: "G-T9EPTP4CPB"
 };
 
 let app;
 let db;
 let auth;
-let isMock = true;
+let storage;
+let isMock = false;
 
 try {
-  // If the user replaces MOCK_API_KEY with a real key, this will connect to the live database
   if (firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("MOCK_API_KEY")) {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     auth = getAuth(app);
+    storage = getStorage(app);
     isMock = false;
+    console.log("Firebase Live Database & Cloud Storage Initialized Successfully!");
+  } else {
+    isMock = true;
   }
 } catch (e) {
   console.warn("Firebase failed to initialize. Falling back to local state storage mock.", e);
+  isMock = true;
 }
+
+// Upload File / Data URL to Firebase Cloud Storage
+export const uploadImageToFirebaseStorage = async (fileOrDataUrl, pathPrefix = 'products') => {
+  if (!isMock && storage) {
+    try {
+      const fileName = `${pathPrefix}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const storageRef = ref(storage, `${pathPrefix}/${fileName}`);
+      
+      let blob;
+      if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
+        const res = await fetch(fileOrDataUrl);
+        blob = await res.blob();
+      } else {
+        blob = fileOrDataUrl;
+      }
+      
+      await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(storageRef);
+      return downloadURL;
+    } catch (e) {
+      console.warn("Firebase Storage upload fallback:", e);
+    }
+  }
+  return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '';
+};
 
 // Highly reliable Mock Firestore that persists to localStorage when in development/mock mode
 const mockStore = {
@@ -279,9 +311,22 @@ export const deleteUserFromDb = async (email) => {
 
 // Helper methods that match Firestore APIs
 export const getProductsFromDb = async () => {
-  if (!isMock) {
-    const querySnapshot = await getDocs(collection(db, "products"));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  if (!isMock && db) {
+    try {
+      const querySnapshot = await getDocs(collection(db, "products"));
+      const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (items.length === 0) {
+        // Seed default products into fresh live Firestore
+        for (const p of mockStore.products) {
+          await setDoc(doc(db, "products", p.id), p);
+        }
+        return mockStore.products;
+      }
+      return items;
+    } catch (e) {
+      console.warn("Firestore fetch fallback:", e);
+      return mockStore.products;
+    }
   } else {
     await pullFromCloudDatabase();
     return mockStore.products;
@@ -289,35 +334,57 @@ export const getProductsFromDb = async () => {
 };
 
 export const addProductToDb = async (productData) => {
-  if (!isMock) {
-    const docRef = await addDoc(collection(db, "products"), productData);
-    return docRef.id;
-  } else {
-    const newProduct = { id: `prod-${Date.now()}`, ...productData, reviews: [] };
-    mockStore.products.push(newProduct);
-    syncMock();
-    return newProduct.id;
+  let finalImage = productData.image;
+  if (!isMock && storage && productData.image && productData.image.startsWith('data:')) {
+    finalImage = await uploadImageToFirebaseStorage(productData.image, 'products');
   }
+  const payload = { ...productData, image: finalImage };
+
+  if (!isMock && db) {
+    try {
+      const newId = `prod-${Date.now()}`;
+      await setDoc(doc(db, "products", newId), { id: newId, ...payload });
+      return newId;
+    } catch (e) {
+      console.error("Firestore add error:", e);
+    }
+  }
+  
+  const newProduct = { id: `prod-${Date.now()}`, ...payload, reviews: [] };
+  mockStore.products.push(newProduct);
+  syncMock();
+  return newProduct.id;
 };
 
 export const editProductInDb = async (productId, updatedData) => {
-  if (!isMock) {
-    const docRef = doc(db, "products", productId);
-    await updateDoc(docRef, updatedData);
-  } else {
-    mockStore.products = mockStore.products.map(p => p.id === productId ? { ...p, ...updatedData } : p);
-    syncMock();
+  let payload = { ...updatedData };
+  if (!isMock && storage && updatedData.image && updatedData.image.startsWith('data:')) {
+    payload.image = await uploadImageToFirebaseStorage(updatedData.image, 'products');
   }
+
+  if (!isMock && db) {
+    try {
+      const docRef = doc(db, "products", productId);
+      await updateDoc(docRef, payload);
+    } catch (e) {
+      console.error("Firestore update error:", e);
+    }
+  }
+  mockStore.products = mockStore.products.map(p => p.id === productId ? { ...p, ...payload } : p);
+  syncMock();
 };
 
 export const deleteProductFromDb = async (productId) => {
-  if (!isMock) {
-    const docRef = doc(db, "products", productId);
-    await deleteDoc(docRef);
-  } else {
-    mockStore.products = mockStore.products.filter(p => p.id !== productId);
-    syncMock();
+  if (!isMock && db) {
+    try {
+      const docRef = doc(db, "products", productId);
+      await deleteDoc(docRef);
+    } catch (e) {
+      console.error("Firestore delete error:", e);
+    }
   }
+  mockStore.products = mockStore.products.filter(p => p.id !== productId);
+  syncMock();
 };
 
 export const getOrdersFromDb = async () => {
