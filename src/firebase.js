@@ -247,9 +247,21 @@ export const resetDatabaseOrdersAndUsers = async () => {
 };
 
 export const getUsersFromDb = async () => {
-  if (!isMock) {
-    const querySnapshot = await getDocs(collection(db, "users"));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  if (!isMock && db) {
+    try {
+      const querySnapshot = await getDocs(collection(db, "users"));
+      const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (items.length === 0) {
+        for (const u of mockStore.users) {
+          await setDoc(doc(db, "users", u.id), u);
+        }
+        return mockStore.users;
+      }
+      return items;
+    } catch (e) {
+      console.warn("Firestore users fetch fallback:", e);
+      return mockStore.users;
+    }
   } else {
     const stored = JSON.parse(localStorage.getItem('tne_users') || '[]');
     if (stored && stored.length > 0) {
