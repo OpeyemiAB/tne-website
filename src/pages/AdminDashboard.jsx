@@ -598,27 +598,53 @@ export default function AdminDashboard() {
           <div style={{ backgroundColor: '#fff', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', maxHeight: '600px', overflowY: 'auto' }} className="custom-scroll">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', color: 'var(--primary-green)', margin: 0 }}>
-                Live Storefront Inventory
+                Live Storefront Inventory ({products.length})
               </h3>
-              <a 
-                href="/shop" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                style={{
-                  backgroundColor: 'rgba(0,75,73,0.1)',
-                  color: 'var(--primary-green)',
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: '6px',
-                  fontSize: '0.75rem',
-                  fontWeight: 'bold',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.3rem',
-                  textDecoration: 'none'
-                }}
-              >
-                👁 View Live Storefront ➔
-              </a>
+              
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const { pushToCloudDatabase, pullFromCloudDatabase } = await import('../firebase');
+                    pushToCloudDatabase();
+                    await pullFromCloudDatabase();
+                    showToast("Catalog synced live to all devices worldwide!", "success");
+                    window.location.reload();
+                  }}
+                  style={{
+                    backgroundColor: 'rgba(212,175,55,0.15)',
+                    color: 'var(--accent-gold-dark)',
+                    border: '1px solid var(--accent-gold)',
+                    padding: '0.35rem 0.65rem',
+                    borderRadius: '6px',
+                    fontSize: '0.72rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                  title="Push current catalog live to all mobile phones and devices"
+                >
+                  🔄 Sync All Devices
+                </button>
+                <a 
+                  href="/shop" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{
+                    backgroundColor: 'rgba(0,75,73,0.1)',
+                    color: 'var(--primary-green)',
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    textDecoration: 'none'
+                  }}
+                >
+                  👁 View Live Storefront ➔
+                </a>
+              </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {products.map(p => (

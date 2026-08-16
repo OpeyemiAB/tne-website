@@ -147,14 +147,14 @@ export const pushToCloudDatabase = () => {
   }, 300);
 };
 
-// Global Cloud Sync Puller
+// Global Cloud Sync Puller - Forces 100% catalog alignment across all devices worldwide
 export const pullFromCloudDatabase = async () => {
   try {
     const res = await fetch(CLOUD_SYNC_URL);
     if (res.ok) {
       const result = await res.json();
       if (result && result.data) {
-        if (Array.isArray(result.data.products) && result.data.products.length > 0) {
+        if (Array.isArray(result.data.products)) {
           mockStore.products = result.data.products;
           localStorage.setItem('tne_products', JSON.stringify(result.data.products));
         }
