@@ -119,6 +119,64 @@ const mockStore = {
   }))
 };
 
+const CLOUD_SYNC_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b11001a009ed450c2aa9';
+
+// Global Cloud Sync Pusher
+let syncDebounceTimer = null;
+export const pushToCloudDatabase = () => {
+  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(async () => {
+    try {
+      await fetch(CLOUD_SYNC_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'TNE_STOREFRONT',
+          data: {
+            products: mockStore.products,
+            orders: mockStore.orders,
+            atelierOptions: mockStore.atelierOptions,
+            users: mockStore.users,
+            updatedAt: Date.now()
+          }
+        })
+      });
+    } catch (e) {
+      console.warn("Cloud sync push error:", e);
+    }
+  }, 300);
+};
+
+// Global Cloud Sync Puller
+export const pullFromCloudDatabase = async () => {
+  try {
+    const res = await fetch(CLOUD_SYNC_URL);
+    if (res.ok) {
+      const result = await res.json();
+      if (result && result.data) {
+        if (Array.isArray(result.data.products) && result.data.products.length > 0) {
+          mockStore.products = result.data.products;
+          localStorage.setItem('tne_products', JSON.stringify(result.data.products));
+        }
+        if (Array.isArray(result.data.orders)) {
+          mockStore.orders = result.data.orders;
+          localStorage.setItem('tne_orders', JSON.stringify(result.data.orders));
+        }
+        if (result.data.atelierOptions) {
+          mockStore.atelierOptions = result.data.atelierOptions;
+          localStorage.setItem('tne_atelier_options', JSON.stringify(result.data.atelierOptions));
+        }
+        if (Array.isArray(result.data.users) && result.data.users.length > 0) {
+          mockStore.users = result.data.users;
+          localStorage.setItem('tne_users', JSON.stringify(result.data.users));
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Cloud sync pull error:", e);
+  }
+};
+
 // Database state syncer with quota protection
 const syncMock = () => {
   try {
@@ -141,6 +199,7 @@ const syncMock = () => {
       console.error("Critical storage write failure:", e);
     }
   }
+  pushToCloudDatabase();
 };
 
 // Reset orders and users for clean start
@@ -223,15 +282,7 @@ export const getProductsFromDb = async () => {
     const querySnapshot = await getDocs(collection(db, "products"));
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } else {
-    const stored = localStorage.getItem('tne_products');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          mockStore.products = parsed;
-        }
-      } catch (e) {}
-    }
+    await pullFromCloudDatabase();
     return mockStore.products;
   }
 };
@@ -273,6 +324,7 @@ export const getOrdersFromDb = async () => {
     const querySnapshot = await getDocs(collection(db, "orders"));
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } else {
+    await pullFromCloudDatabase();
     return mockStore.orders;
   }
 };
