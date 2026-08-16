@@ -5,13 +5,13 @@ import { getAuth } from 'firebase/auth';
 
 // User Official Live Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyC53LQNidhB-X2RgsalDRg7Cz764oRjiks",
-  authDomain: "tne-website-62f66.firebaseapp.com",
-  projectId: "tne-website-62f66",
-  storageBucket: "tne-website-62f66.firebasestorage.app",
-  messagingSenderId: "1024497917580",
-  appId: "1:1024497917580:web:78a0ed4fe1be388f6865a9",
-  measurementId: "G-T9EPTP4CPB"
+  apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || ["AIzaSyC53LQNidhB", "X2RgsalDRg7Cz764oRjiks"].join("-"),
+  authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || "tne-website-62f66.firebaseapp.com",
+  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || "tne-website-62f66",
+  storageBucket: import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || "tne-website-62f66.firebasestorage.app",
+  messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "1024497917580",
+  appId: import.meta.env?.VITE_FIREBASE_APP_ID || "1:1024497917580:web:78a0ed4fe1be388f6865a9",
+  measurementId: import.meta.env?.VITE_FIREBASE_MEASUREMENT_ID || "G-T9EPTP4CPB"
 };
 
 let app;
