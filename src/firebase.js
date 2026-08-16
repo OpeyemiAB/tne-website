@@ -1,65 +1,33 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 
-// User Official Live Firebase configuration
+// Standard Firebase config - users can replace this with their actual config credentials
 const firebaseConfig = {
-  apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || ["AIzaSyC53LQNidhB", "X2RgsalDRg7Cz764oRjiks"].join("-"),
-  authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || "tne-website-62f66.firebaseapp.com",
-  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || "tne-website-62f66",
-  storageBucket: import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || "tne-website-62f66.firebasestorage.app",
-  messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "1024497917580",
-  appId: import.meta.env?.VITE_FIREBASE_APP_ID || "1:1024497917580:web:78a0ed4fe1be388f6865a9",
-  measurementId: import.meta.env?.VITE_FIREBASE_MEASUREMENT_ID || "G-T9EPTP4CPB"
+  apiKey: "MOCK_API_KEY_TNE_UX_PORTFOLIO",
+  authDomain: "tne-luxury.firebaseapp.com",
+  projectId: "tne-luxury",
+  storageBucket: "tne-luxury.appspot.com",
+  messagingSenderId: "1234567890",
+  appId: "1:1234567890:web:mock123"
 };
 
 let app;
 let db;
 let auth;
-let storage;
-let isMock = false;
+let isMock = true;
 
 try {
+  // If the user replaces MOCK_API_KEY with a real key, this will connect to the live database
   if (firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("MOCK_API_KEY")) {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     auth = getAuth(app);
-    storage = getStorage(app);
     isMock = false;
-    console.log("Firebase Live Database & Cloud Storage Initialized Successfully!");
-  } else {
-    isMock = true;
   }
 } catch (e) {
   console.warn("Firebase failed to initialize. Falling back to local state storage mock.", e);
-  isMock = true;
 }
-
-// Upload File / Data URL to Firebase Cloud Storage
-export const uploadImageToFirebaseStorage = async (fileOrDataUrl, pathPrefix = 'products') => {
-  if (!isMock && storage) {
-    try {
-      const fileName = `${pathPrefix}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      const storageRef = ref(storage, `${pathPrefix}/${fileName}`);
-      
-      let blob;
-      if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
-        const res = await fetch(fileOrDataUrl);
-        blob = await res.blob();
-      } else {
-        blob = fileOrDataUrl;
-      }
-      
-      await uploadBytes(storageRef, blob);
-      const downloadURL = await getDownloadURL(storageRef);
-      return downloadURL;
-    } catch (e) {
-      console.warn("Firebase Storage upload fallback:", e);
-    }
-  }
-  return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '';
-};
 
 // Highly reliable Mock Firestore that persists to localStorage when in development/mock mode
 const mockStore = {
@@ -151,95 +119,57 @@ const mockStore = {
   }))
 };
 
-const CLOUD_SYNC_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b11001a009ed450c2aa9';
+// Multi-device Database State Syncer
+const syncMock = () => {
+  localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
+  localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
+  localStorage.setItem('tne_users', JSON.stringify(mockStore.users));
+  localStorage.setItem('tne_atelier_options', JSON.stringify(mockStore.atelierOptions));
 
-// Global Cloud Sync Pusher (Only pushes when an explicit Admin action is triggered)
-let syncDebounceTimer = null;
-export const pushToCloudDatabase = (force = false) => {
-  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
-  syncDebounceTimer = setTimeout(async () => {
-    try {
-      await fetch(CLOUD_SYNC_URL, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: 'TNE_STOREFRONT',
-          data: {
-            products: mockStore.products,
-            orders: mockStore.orders,
-            atelierOptions: mockStore.atelierOptions,
-            users: mockStore.users,
-            updatedAt: Date.now()
-          }
-        })
-      });
-      console.log("Cloud Master Catalog updated successfully.");
-    } catch (e) {
-      console.warn("Cloud sync push error:", e);
-    }
-  }, 300);
+  // Sync to shared cloud database key so phones and laptops share live state
+  try {
+    const payload = {
+      orders: mockStore.orders,
+      products: mockStore.products,
+      users: mockStore.users,
+      atelierOptions: mockStore.atelierOptions
+    };
+    fetch('https://kvdb.io/WvYx29N1T5yA88Qx7Z3b5p/tne_store_state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {});
+  } catch (e) {}
 };
 
-// Global Cloud Sync Puller - Overwrites local storage with Cloud Master Catalog
-export const pullFromCloudDatabase = async () => {
+// Initial Cloud Fetch on Application Launch
+export const syncCloudStateOnLoad = async () => {
   try {
-    const res = await fetch(CLOUD_SYNC_URL);
+    const res = await fetch('https://kvdb.io/WvYx29N1T5yA88Qx7Z3b5p/tne_store_state');
     if (res.ok) {
-      const result = await res.json();
-      if (result && result.data) {
-        if (Array.isArray(result.data.products)) {
-          mockStore.products = [...result.data.products];
-          localStorage.setItem('tne_products', JSON.stringify(result.data.products));
-        }
-        if (Array.isArray(result.data.orders)) {
-          mockStore.orders = [...result.data.orders];
-          localStorage.setItem('tne_orders', JSON.stringify(result.data.orders));
-        }
-        if (result.data.atelierOptions) {
-          mockStore.atelierOptions = { ...result.data.atelierOptions };
-          localStorage.setItem('tne_atelier_options', JSON.stringify(result.data.atelierOptions));
-        }
-        if (Array.isArray(result.data.users) && result.data.users.length > 0) {
-          mockStore.users = [...result.data.users];
-          localStorage.setItem('tne_users', JSON.stringify(result.data.users));
-        }
+      const data = await res.json();
+      if (data) {
+        if (data.products && data.products.length > 0) mockStore.products = data.products;
+        if (data.orders) mockStore.orders = data.orders;
+        if (data.users && data.users.length > 0) mockStore.users = data.users;
+        if (data.atelierOptions) mockStore.atelierOptions = data.atelierOptions;
+
+        localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
+        localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
+        localStorage.setItem('tne_users', JSON.stringify(mockStore.users));
+        localStorage.setItem('tne_atelier_options', JSON.stringify(mockStore.atelierOptions));
       }
     }
-  } catch (e) {
-    console.warn("Cloud sync pull error:", e);
-  }
+  } catch (e) {}
 };
-
-// Database state syncer with quota protection
-const syncMock = () => {
-  try {
-    localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
-    localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
-    localStorage.setItem('tne_users', JSON.stringify(mockStore.users));
-    localStorage.setItem('tne_atelier_options', JSON.stringify(mockStore.atelierOptions));
-  } catch (err) {
-    console.warn("Storage quota limit reached. Cleaning heavy image buffers to preserve inventory...", err);
-    try {
-      const optimizedProducts = mockStore.products.map(p => ({
-        ...p,
-        image: (p.image && p.image.length > 80000) 
-          ? 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80' 
-          : p.image
-      }));
-      localStorage.setItem('tne_products', JSON.stringify(optimizedProducts));
-      localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
-    } catch (e) {
-      console.error("Critical storage write failure:", e);
-    }
-  }
-  pushToCloudDatabase();
-};
+syncCloudStateOnLoad();
 
 // Reset orders and users for clean start
 export const resetDatabaseOrdersAndUsers = async () => {
   mockStore.orders = [];
   mockStore.users = [
-    { id: 'user-admin', name: 'Nifemi Admin', email: 'admin@tne.com', role: 'Admin', date: new Date().toLocaleDateString() }
+    { id: 'user-admin-1', name: 'Adepitan Oluwanifemi', email: 'oluwanifemiadepitan46@gmail.com', role: 'Super Admin', status: 'Active', date: new Date().toLocaleDateString() },
+    { id: 'user-admin-2', name: 'Nifemi', email: 'hello@thenifemiexperience.com', role: 'Super Admin', status: 'Active', date: new Date().toLocaleDateString() }
   ];
   localStorage.removeItem('tne_orders');
   localStorage.setItem('tne_users', JSON.stringify(mockStore.users));
@@ -247,21 +177,9 @@ export const resetDatabaseOrdersAndUsers = async () => {
 };
 
 export const getUsersFromDb = async () => {
-  if (!isMock && db) {
-    try {
-      const querySnapshot = await getDocs(collection(db, "users"));
-      const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      if (items.length === 0) {
-        for (const u of mockStore.users) {
-          await setDoc(doc(db, "users", u.id), u);
-        }
-        return mockStore.users;
-      }
-      return items;
-    } catch (e) {
-      console.warn("Firestore users fetch fallback:", e);
-      return mockStore.users;
-    }
+  if (!isMock) {
+    const querySnapshot = await getDocs(collection(db, "users"));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } else {
     const stored = JSON.parse(localStorage.getItem('tne_users') || '[]');
     if (stored && stored.length > 0) {
@@ -323,80 +241,44 @@ export const deleteUserFromDb = async (email) => {
 
 // Helper methods that match Firestore APIs
 export const getProductsFromDb = async () => {
-  if (!isMock && db) {
-    try {
-      const querySnapshot = await getDocs(collection(db, "products"));
-      const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      if (items.length === 0) {
-        // Seed default products into fresh live Firestore
-        for (const p of mockStore.products) {
-          await setDoc(doc(db, "products", p.id), p);
-        }
-        return mockStore.products;
-      }
-      return items;
-    } catch (e) {
-      console.warn("Firestore fetch fallback:", e);
-      return mockStore.products;
-    }
+  if (!isMock) {
+    const querySnapshot = await getDocs(collection(db, "products"));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } else {
-    await pullFromCloudDatabase();
     return mockStore.products;
   }
 };
 
 export const addProductToDb = async (productData) => {
-  let finalImage = productData.image;
-  if (!isMock && storage && productData.image && productData.image.startsWith('data:')) {
-    finalImage = await uploadImageToFirebaseStorage(productData.image, 'products');
+  if (!isMock) {
+    const docRef = await addDoc(collection(db, "products"), productData);
+    return docRef.id;
+  } else {
+    const newProduct = { id: `prod-${Date.now()}`, ...productData, reviews: [] };
+    mockStore.products.push(newProduct);
+    syncMock();
+    return newProduct.id;
   }
-  const payload = { ...productData, image: finalImage };
-
-  if (!isMock && db) {
-    try {
-      const newId = `prod-${Date.now()}`;
-      await setDoc(doc(db, "products", newId), { id: newId, ...payload });
-      return newId;
-    } catch (e) {
-      console.error("Firestore add error:", e);
-    }
-  }
-  
-  const newProduct = { id: `prod-${Date.now()}`, ...payload, reviews: [] };
-  mockStore.products.push(newProduct);
-  syncMock();
-  return newProduct.id;
 };
 
 export const editProductInDb = async (productId, updatedData) => {
-  let payload = { ...updatedData };
-  if (!isMock && storage && updatedData.image && updatedData.image.startsWith('data:')) {
-    payload.image = await uploadImageToFirebaseStorage(updatedData.image, 'products');
+  if (!isMock) {
+    const docRef = doc(db, "products", productId);
+    await updateDoc(docRef, updatedData);
+  } else {
+    mockStore.products = mockStore.products.map(p => p.id === productId ? { ...p, ...updatedData } : p);
+    syncMock();
   }
-
-  if (!isMock && db) {
-    try {
-      const docRef = doc(db, "products", productId);
-      await updateDoc(docRef, payload);
-    } catch (e) {
-      console.error("Firestore update error:", e);
-    }
-  }
-  mockStore.products = mockStore.products.map(p => p.id === productId ? { ...p, ...payload } : p);
-  syncMock();
 };
 
 export const deleteProductFromDb = async (productId) => {
-  if (!isMock && db) {
-    try {
-      const docRef = doc(db, "products", productId);
-      await deleteDoc(docRef);
-    } catch (e) {
-      console.error("Firestore delete error:", e);
-    }
+  if (!isMock) {
+    const docRef = doc(db, "products", productId);
+    await deleteDoc(docRef);
+  } else {
+    mockStore.products = mockStore.products.filter(p => p.id !== productId);
+    syncMock();
   }
-  mockStore.products = mockStore.products.filter(p => p.id !== productId);
-  syncMock();
 };
 
 export const getOrdersFromDb = async () => {
@@ -404,7 +286,6 @@ export const getOrdersFromDb = async () => {
     const querySnapshot = await getDocs(collection(db, "orders"));
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } else {
-    await pullFromCloudDatabase();
     return mockStore.orders;
   }
 };

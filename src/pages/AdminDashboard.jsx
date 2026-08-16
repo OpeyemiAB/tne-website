@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Database, LogOut, Sparkles, Check, Trash2, Plus, Users, UserPlus } from 'lucide-react';
+import { ClipboardList, Database, LogOut, Sparkles, Check, Trash2, Plus, Users, UserPlus, Camera, Upload, Image as ImageIcon } from 'lucide-react';
 import { useGifting } from '../context/GiftingContext';
 
 export default function AdminDashboard() {
@@ -46,85 +46,78 @@ export default function AdminDashboard() {
     navigate('/');
   };
 
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isSubmittingProd, setIsSubmittingProd] = useState(false);
 
-  const handleImageFileUpload = async (e) => {
+  const handleProductImageFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    setIsUploadingImage(true);
-    showToast("Uploading photo to Global Cloud CDN...", "info");
-
-    try {
-      const formData = new FormData();
-      formData.append('reqtype', 'fileupload');
-      formData.append('fileToUpload', file);
-
-      const res = await fetch('https://catbox.moe/user/api.php', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (res.ok) {
-        const imageUrl = (await res.text()).trim();
-        if (imageUrl && imageUrl.startsWith('http')) {
-          setProdImage(imageUrl);
-          showToast("Photo uploaded live to Cloud CDN!", "success");
-        } else {
-          throw new Error("Invalid response");
-        }
-      } else {
-        throw new Error("Upload failed");
-      }
-    } catch (err) {
-      console.warn("Direct CDN upload failed, processing canvas fallback:", err);
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setProdImage(event.target.result);
-      };
-      reader.readAsDataURL(file);
-    } finally {
-      setIsUploadingImage(false);
+    if (file.size > 8 * 1024 * 1024) {
+      if (showToast) showToast("Product picture size should be under 8MB.", "error");
+      return;
     }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProdImage(reader.result);
+      if (showToast) showToast("Product picture selected!", "success");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleInventoryImageChange = (productId, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        await editProduct(productId, { image: reader.result });
+        if (showToast) showToast("Product image updated live!", "success");
+      } catch (err) {
+        if (showToast) showToast("Failed to update product image.", "error");
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleCreateProduct = async (e) => {
     e.preventDefault();
-    if (isUploadingImage) {
-      showToast("Please wait for photo compression to complete.", "info");
-      return;
-    }
-    const finalImage = (prodImage || '').trim() || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80';
-    if (!prodName || !prodPrice) {
-      showToast("Please provide product name and price.", "error");
+    if (!prodName.trim() || !prodPrice || !prodImage) {
+      if (showToast) showToast("Please enter product name, price, and select/paste an image.", "error");
       return;
     }
 
-    const newProd = {
-      name: prodName,
-      price: Number(prodPrice),
-      image: finalImage,
-      category: prodCategory,
-      description: prodDescription,
-      features: prodFeatures.split('\n').filter(f => f.trim() !== ''),
-      customizable: prodCustomizable,
-      inStock: true
-    };
+    setIsSubmittingProd(true);
+    try {
+      const newProd = {
+        name: prodName.trim(),
+        price: Number(prodPrice),
+        image: prodImage,
+        category: prodCategory,
+        description: prodDescription.trim(),
+        features: prodFeatures.split('\n').filter(f => f.trim() !== ''),
+        customizable: prodCustomizable,
+        inStock: true
+      };
 
-    await addProduct(newProd);
+      await addProduct(newProd);
 
-    // Reset form
-    setProdName('');
-    setProdPrice('');
-    setProdImage('');
-    setProdDescription('');
-    setProdFeatures('');
-    setProdCustomizable(false);
-    setFormSuccess(true);
+      // Reset form
+      setProdName('');
+      setProdPrice('');
+      setProdImage('');
+      setProdDescription('');
+      setProdFeatures('');
+      setProdCustomizable(false);
+      setFormSuccess(true);
+      if (showToast) showToast("Product uploaded live to storefront!", "success");
 
-    setTimeout(() => {
-      setFormSuccess(false);
-    }, 4000);
+      setTimeout(() => {
+        setFormSuccess(false);
+      }, 4000);
+    } catch (err) {
+      if (showToast) showToast("Failed to add product.", "error");
+    } finally {
+      setIsSubmittingProd(false);
+    }
   };
 
   const orderStages = ['Pending', 'Sourcing Items', 'Wrapped with Love', 'Out for Delivery', 'Delivered'];
@@ -496,52 +489,53 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Product Image Section: Device File Upload OR Image URL */}
-              <div style={{ backgroundColor: 'var(--background-ivory)', border: '1.5px dashed var(--accent-gold)', borderRadius: '8px', padding: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary-green)', marginBottom: '0.4rem' }}>
-                  📷 Product Photo (Upload from Phone/Laptop OR Paste URL)
-                </label>
-                
-                {/* File picker */}
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Option A: Select photo from device</span>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={handleImageFileUpload}
-                    style={{ fontSize: '0.8rem', width: '100%' }}
-                  />
-                </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', marginBottom: '0.25rem' }}>Product Picture / Image</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {/* File Upload Option */}
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justify: 'center',
+                    gap: '0.5rem',
+                    border: '1.5px dashed var(--accent-gold)',
+                    backgroundColor: 'rgba(212,175,55,0.08)',
+                    color: 'var(--primary-green)',
+                    padding: '0.75rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold'
+                  }}>
+                    <Upload size={16} /> Choose Photo from Device / Camera
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleProductImageFileUpload} 
+                      style={{ display: 'none' }} 
+                    />
+                  </label>
 
-                {/* URL input */}
-                <div>
-                  <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Option B: Paste Image Web URL</span>
+                  {/* Image URL Option Fallback */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>OR Paste Image Web URL:</span>
+                  </div>
                   <input 
                     type="text" 
                     value={prodImage} 
                     onChange={e => setProdImage(e.target.value)} 
                     placeholder="https://images.unsplash.com/..."
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px', outline: 'none', fontSize: '0.8rem', backgroundColor: '#fff' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px', outline: 'none', fontSize: '0.8rem' }}
                   />
-                </div>
 
-                {/* Instant Thumbnail Preview */}
-                {prodImage && (
-                  <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', backgroundColor: '#fff', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                    <img src={prodImage} alt="Product Preview" style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
-                    <div style={{ flex: 1, fontSize: '0.75rem', color: 'var(--primary-green)', fontWeight: 'bold' }}>
-                      ✓ Image Ready for Catalog
+                  {/* Live Thumbnail Preview */}
+                  {prodImage && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.25rem', padding: '0.5rem', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <img src={prodImage} alt="Preview" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px' }} />
+                      <span style={{ fontSize: '0.72rem', color: 'var(--primary-green)', fontWeight: 'bold' }}>✓ Image Ready for Upload</span>
                     </div>
-                    <button 
-                      type="button" 
-                      onClick={() => setProdImage('')}
-                      style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
-                      title="Clear photo"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               <div>
@@ -580,16 +574,11 @@ export default function AdminDashboard() {
 
               <button 
                 type="submit" 
+                disabled={isSubmittingProd}
                 className="btn-gold" 
-                disabled={isUploadingImage}
-                style={{ 
-                  justifyContent: 'center', 
-                  padding: '0.75rem',
-                  opacity: isUploadingImage ? 0.6 : 1,
-                  cursor: isUploadingImage ? 'not-allowed' : 'pointer'
-                }}
+                style={{ justifyContent: 'center', padding: '0.75rem', opacity: isSubmittingProd ? 0.7 : 1, cursor: isSubmittingProd ? 'not-allowed' : 'pointer' }}
               >
-                {isUploadingImage ? '⏳ Compressing Photo...' : <><Plus size={18} /> Upload Product</>}
+                <Plus size={18} /> {isSubmittingProd ? 'Uploading Product...' : 'Upload Product'}
               </button>
             </form>
           </div>
@@ -598,105 +587,61 @@ export default function AdminDashboard() {
           <div style={{ backgroundColor: '#fff', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', maxHeight: '600px', overflowY: 'auto' }} className="custom-scroll">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', color: 'var(--primary-green)', margin: 0 }}>
-                Live Storefront Inventory ({products.length})
+                Live Storefront Inventory
               </h3>
-              
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const { pushToCloudDatabase, pullFromCloudDatabase } = await import('../firebase');
-                    pushToCloudDatabase();
-                    await pullFromCloudDatabase();
-                    showToast("Catalog synced live to all devices worldwide!", "success");
-                    window.location.reload();
-                  }}
-                  style={{
-                    backgroundColor: 'rgba(212,175,55,0.15)',
-                    color: 'var(--accent-gold-dark)',
-                    border: '1px solid var(--accent-gold)',
-                    padding: '0.35rem 0.65rem',
-                    borderRadius: '6px',
-                    fontSize: '0.72rem',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
-                  title="Push current catalog live to all mobile phones and devices"
-                >
-                  🔄 Sync All Devices
-                </button>
-                <a 
-                  href="/shop" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  style={{
-                    backgroundColor: 'rgba(0,75,73,0.1)',
-                    color: 'var(--primary-green)',
-                    padding: '0.35rem 0.75rem',
-                    borderRadius: '6px',
-                    fontSize: '0.75rem',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.3rem',
-                    textDecoration: 'none'
-                  }}
-                >
-                  👁 View Live Storefront ➔
-                </a>
-              </div>
+              <a 
+                href="/shop" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{
+                  backgroundColor: 'rgba(0,75,73,0.1)',
+                  color: 'var(--primary-green)',
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                  textDecoration: 'none'
+                }}
+              >
+                👁 View Live Storefront ➔
+              </a>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {products.map(p => (
                 <div key={p.id} style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem', alignItems: 'center' }}>
-                  <div style={{ position: 'relative' }}>
-                    <img src={p.image || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80'} alt={p.name} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
+                  {/* Image with Camera Change Trigger */}
+                  <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
+                    <img src={p.image} alt={p.name} style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
                     <label 
+                      htmlFor={`img-change-${p.id}`}
                       style={{
                         position: 'absolute',
                         bottom: '-4px',
                         right: '-4px',
-                        backgroundColor: 'var(--accent-gold)',
-                        color: 'var(--primary-green-dark)',
+                        backgroundColor: 'var(--primary-green)',
+                        color: 'var(--accent-gold)',
                         borderRadius: '50%',
-                        width: '20px',
-                        height: '20px',
+                        width: '22px',
+                        height: '22px',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.65rem',
+                        justify: 'center',
                         cursor: 'pointer',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        border: '1px solid #fff'
                       }}
-                      title="Upload new image from device"
+                      title="Click camera icon to change product image"
                     >
-                      📷
+                      <Camera size={12} />
                       <input 
+                        id={`img-change-${p.id}`}
                         type="file" 
                         accept="image/*" 
-                        style={{ display: 'none' }}
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          showToast(`Uploading photo for ${p.name} to Cloud CDN...`, "info");
-                          try {
-                            const formData = new FormData();
-                            formData.append('reqtype', 'fileupload');
-                            formData.append('fileToUpload', file);
-                            const res = await fetch('https://catbox.moe/user/api.php', { method: 'POST', body: formData });
-                            if (res.ok) {
-                              const imageUrl = (await res.text()).trim();
-                              if (imageUrl && imageUrl.startsWith('http')) {
-                                editProduct(p.id, { image: imageUrl });
-                                showToast(`Photo updated live for ${p.name}!`, "success");
-                                return;
-                              }
-                            }
-                          } catch (err) {
-                            console.error(err);
-                          }
-                          showToast("Photo upload failed. Try again.", "error");
-                        }}
+                        onChange={(e) => handleInventoryImageChange(p.id, e)} 
+                        style={{ display: 'none' }} 
                       />
                     </label>
                   </div>

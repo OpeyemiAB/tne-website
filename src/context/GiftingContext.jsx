@@ -49,9 +49,9 @@ export const GiftingProvider = ({ children }) => {
       const dbProducts = await getProductsFromDb();
       const dbOrders = await getOrdersFromDb();
       const dbAtelier = await getAtelierOptionsFromDb();
-      setProducts([...(dbProducts || [])]);
-      setOrders([...(dbOrders || [])]);
-      setAtelierOptions({ ...(dbAtelier || {}) });
+      setProducts(dbProducts);
+      setOrders(dbOrders);
+      setAtelierOptions(dbAtelier);
     } catch (e) {
       console.error("Failed to load inventory/orders", e);
     }
@@ -304,18 +304,12 @@ export const GiftingProvider = ({ children }) => {
     
     // Super Admin logins (oluwanifemiadepitan46@gmail.com, hello@thenifemiexperience.com, admin@tne.com)
     if (cleanEmail === 'oluwanifemiadepitan46@gmail.com' || cleanEmail === 'hello@thenifemiexperience.com' || cleanEmail === 'admin@tne.com') {
-      if (cleanEmail === 'admin@tne.com' && password && password !== 'admin123' && password !== 'Oyinkansola@1') {
-        throw new Error("Invalid password for admin@tne.com account.");
-      }
       if (cleanEmail === 'oluwanifemiadepitan46@gmail.com' && password && password !== 'Oyinkansola@1') {
-        throw new Error("Invalid password for Super Admin account.");
-      }
-      if (cleanEmail === 'hello@thenifemiexperience.com' && password && password !== 'Oyinkansola@1') {
         throw new Error("Invalid password for Super Admin account.");
       }
       const adminUser = { 
         id: 'admin-super', 
-        name: cleanEmail === 'oluwanifemiadepitan46@gmail.com' ? 'Adepitan Oluwanifemi' : cleanEmail === 'admin@tne.com' ? 'TNE Admin' : 'Nifemi', 
+        name: cleanEmail === 'oluwanifemiadepitan46@gmail.com' ? 'Adepitan Oluwanifemi' : 'Nifemi', 
         email: cleanEmail, 
         role: 'Super Admin',
         status: 'Active'
