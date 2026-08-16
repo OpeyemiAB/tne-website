@@ -48,48 +48,44 @@ export default function AdminDashboard() {
 
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
-  const handleImageFileUpload = (e) => {
+  const handleImageFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
     setIsUploadingImage(true);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_DIM = 450;
-        let width = img.width;
-        let height = img.height;
+    showToast("Uploading photo to Global Cloud CDN...", "info");
 
-        if (width > height) {
-          if (width > MAX_DIM) {
-            height *= MAX_DIM / width;
-            width = MAX_DIM;
-          }
+    try {
+      const formData = new FormData();
+      formData.append('reqtype', 'fileupload');
+      formData.append('fileToUpload', file);
+
+      const res = await fetch('https://catbox.moe/user/api.php', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (res.ok) {
+        const imageUrl = (await res.text()).trim();
+        if (imageUrl && imageUrl.startsWith('http')) {
+          setProdImage(imageUrl);
+          showToast("Photo uploaded live to Cloud CDN!", "success");
         } else {
-          if (height > MAX_DIM) {
-            width *= MAX_DIM / height;
-            height = MAX_DIM;
-          }
+          throw new Error("Invalid response");
         }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        // Ultra-lightweight JPEG compression (~20KB) to ensure local storage sync never fails
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
-        setProdImage(dataUrl);
-        setIsUploadingImage(false);
-        showToast("Product photo compressed and ready!", "success");
+      } else {
+        throw new Error("Upload failed");
+      }
+    } catch (err) {
+      console.warn("Direct CDN upload failed, processing canvas fallback:", err);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setProdImage(event.target.result);
       };
-      img.onerror = () => {
-        setIsUploadingImage(false);
-        showToast("Error processing photo file.", "error");
-      };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const handleCreateProduct = async (e) => {
@@ -653,25 +649,27 @@ export default function AdminDashboard() {
                         type="file" 
                         accept="image/*" 
                         style={{ display: 'none' }}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = (evt) => {
-                            const img = new Image();
-                            img.onload = () => {
-                              const canvas = document.createElement('canvas');
-                              canvas.width = 600;
-                              canvas.height = 600;
-                              const ctx = canvas.getContext('2d');
-                              ctx.drawImage(img, 0, 0, 600, 600);
-                              const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-                              editProduct(p.id, { image: dataUrl });
-                              showToast(`Photo updated for ${p.name}!`, "success");
-                            };
-                            img.src = evt.target.result;
-                          };
-                          reader.readAsDataURL(file);
+                          showToast(`Uploading photo for ${p.name} to Cloud CDN...`, "info");
+                          try {
+                            const formData = new FormData();
+                            formData.append('reqtype', 'fileupload');
+                            formData.append('fileToUpload', file);
+                            const res = await fetch('https://catbox.moe/user/api.php', { method: 'POST', body: formData });
+                            if (res.ok) {
+                              const imageUrl = (await res.text()).trim();
+                              if (imageUrl && imageUrl.startsWith('http')) {
+                                editProduct(p.id, { image: imageUrl });
+                                showToast(`Photo updated live for ${p.name}!`, "success");
+                                return;
+                              }
+                            }
+                          } catch (err) {
+                            console.error(err);
+                          }
+                          showToast("Photo upload failed. Try again.", "error");
                         }}
                       />
                     </label>
