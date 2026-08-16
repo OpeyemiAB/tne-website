@@ -121,9 +121,9 @@ const mockStore = {
 
 const CLOUD_SYNC_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b11001a009ed450c2aa9';
 
-// Global Cloud Sync Pusher
+// Global Cloud Sync Pusher (Only pushes when an explicit Admin action is triggered)
 let syncDebounceTimer = null;
-export const pushToCloudDatabase = () => {
+export const pushToCloudDatabase = (force = false) => {
   if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
   syncDebounceTimer = setTimeout(async () => {
     try {
@@ -141,13 +141,14 @@ export const pushToCloudDatabase = () => {
           }
         })
       });
+      console.log("Cloud Master Catalog updated successfully.");
     } catch (e) {
       console.warn("Cloud sync push error:", e);
     }
   }, 300);
 };
 
-// Global Cloud Sync Puller - Forces 100% catalog alignment across all devices worldwide
+// Global Cloud Sync Puller - Overwrites local storage with Cloud Master Catalog
 export const pullFromCloudDatabase = async () => {
   try {
     const res = await fetch(CLOUD_SYNC_URL);
@@ -155,19 +156,19 @@ export const pullFromCloudDatabase = async () => {
       const result = await res.json();
       if (result && result.data) {
         if (Array.isArray(result.data.products)) {
-          mockStore.products = result.data.products;
+          mockStore.products = [...result.data.products];
           localStorage.setItem('tne_products', JSON.stringify(result.data.products));
         }
         if (Array.isArray(result.data.orders)) {
-          mockStore.orders = result.data.orders;
+          mockStore.orders = [...result.data.orders];
           localStorage.setItem('tne_orders', JSON.stringify(result.data.orders));
         }
         if (result.data.atelierOptions) {
-          mockStore.atelierOptions = result.data.atelierOptions;
+          mockStore.atelierOptions = { ...result.data.atelierOptions };
           localStorage.setItem('tne_atelier_options', JSON.stringify(result.data.atelierOptions));
         }
         if (Array.isArray(result.data.users) && result.data.users.length > 0) {
-          mockStore.users = result.data.users;
+          mockStore.users = [...result.data.users];
           localStorage.setItem('tne_users', JSON.stringify(result.data.users));
         }
       }

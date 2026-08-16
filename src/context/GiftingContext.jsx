@@ -49,9 +49,9 @@ export const GiftingProvider = ({ children }) => {
       const dbProducts = await getProductsFromDb();
       const dbOrders = await getOrdersFromDb();
       const dbAtelier = await getAtelierOptionsFromDb();
-      setProducts(dbProducts);
-      setOrders(dbOrders);
-      setAtelierOptions(dbAtelier);
+      setProducts([...(dbProducts || [])]);
+      setOrders([...(dbOrders || [])]);
+      setAtelierOptions({ ...(dbAtelier || {}) });
     } catch (e) {
       console.error("Failed to load inventory/orders", e);
     }
