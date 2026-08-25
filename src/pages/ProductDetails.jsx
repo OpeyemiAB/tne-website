@@ -8,6 +8,8 @@ export default function ProductDetails() {
   const navigate = useNavigate();
   const { products, addToCart, toggleWishlist, wishlist, addRecentView } = useGifting();
   const [product, setProduct] = useState(null);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
   
   // Customization State
   const [engraveName, setEngraveName] = useState('');
@@ -17,18 +19,19 @@ export default function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('description');
 
-  // Customer Reviews state (for demo review inputs)
+  // Customer Reviews state
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewUser, setReviewUser] = useState('');
   const [reviewsList, setReviewsList] = useState([]);
 
   useEffect(() => {
-    const prod = products.find(p => p.id === productId);
+    const prod = products.find(p => String(p.id) === String(productId));
     if (prod) {
       setProduct(prod);
       setReviewsList(prod.reviews || []);
       addRecentView(prod);
+      setActiveImageIndex(0);
     }
   }, [productId, products]);
 
@@ -43,7 +46,12 @@ export default function ProductDetails() {
     );
   }
 
-  const isWishlisted = wishlist.some(item => item.id === product.id);
+  const isWishlisted = wishlist.some(item => String(item.id) === String(product.id));
+  const productImages = (product.images && product.images.length > 0) 
+    ? product.images 
+    : [product.image || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80'];
+
+  const currentActiveImg = productImages[activeImageIndex] || productImages[0] || product.image;
 
   // File Upload Simulation
   const handlePhotoUpload = (e) => {
@@ -94,24 +102,71 @@ export default function ProductDetails() {
     setReviewsList(prev => [newRev, ...prev]);
     setReviewComment('');
     setReviewUser('');
-  };
-
-  // Related products
-  const relatedProducts = products.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const productImages = (product.images && product.images.length > 0) ? product.images : [product.image];
+  };  // Related products
+  const relatedProducts = products.filter(p => p.category === product.category && String(p.id) !== String(product.id)).slice(0, 4);
 
   return (
     <div className="container fade-in" style={{ padding: '3rem 1.5rem', fontFamily: 'var(--font-sans)' }}>
       
+      {/* Full-Screen Photo Zoom Modal */}
+      {isZoomModalOpen && (
+        <div 
+          onClick={() => setIsZoomModalOpen(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.88)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '2rem'
+          }}
+        >
+          <div style={{ position: 'relative', maxWidth: '900px', width: '100%', maxHeight: '90vh', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <img 
+              src={currentActiveImg} 
+              alt={product.name}
+              style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
+            />
+            <button
+              onClick={() => setIsZoomModalOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '-15px',
+                right: '-15px',
+                backgroundColor: '#fff',
+                color: '#000',
+                border: 'none',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                fontSize: '1.2rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
+              }}
+            >
+              ✕
+            </button>
+            <div style={{ color: '#fff', marginTop: '1rem', fontSize: '0.9rem' }}>
+              {product.name} (Picture {activeImageIndex + 1} of {productImages.length})
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Product Detail Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: '4rem', marginBottom: '4rem' }} className="details-grid">
         
         {/* Left Column: Product Image & Gallery */}
         <div>
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => setIsZoomModalOpen(true)}>
             <img 
-              src={productImages[activeImageIndex] || product.image} 
+              src={currentActiveImg} 
               alt={product.name}
               style={{
                 width: '100%',
@@ -124,7 +179,10 @@ export default function ProductDetails() {
               }}
             />
             <button 
-              onClick={() => toggleWishlist(product)}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleWishlist(product);
+              }}
               style={{
                 position: 'absolute',
                 top: '1.5rem',
