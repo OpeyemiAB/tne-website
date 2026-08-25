@@ -376,13 +376,30 @@ export default function Shop() {
                     </span>
                   )}
 
-                  <Link to={`/product/${product.id}`} style={{ display: 'block', height: '240px', overflow: 'hidden', opacity: product.inStock === false ? 0.75 : 1 }}>
+                  <Link to={`/product/${product.id}`} style={{ display: 'block', height: '240px', overflow: 'hidden', opacity: product.inStock === false ? 0.75 : 1, position: 'relative' }}>
                     <img 
-                      src={product.image} 
+                      src={product.image || (product.images && product.images[0])} 
                       alt={product.name} 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'var(--transition-smooth)' }}
                       className="product-grid-img"
                     />
+                    {product.images && product.images.length > 1 && (
+                      <span style={{
+                        position: 'absolute',
+                        bottom: '0.6rem',
+                        right: '0.6rem',
+                        backgroundColor: 'rgba(0,0,0,0.65)',
+                        color: '#fff',
+                        fontSize: '0.65rem',
+                        fontWeight: '600',
+                        padding: '0.2rem 0.45rem',
+                        borderRadius: '4px',
+                        backdropFilter: 'blur(4px)',
+                        letterSpacing: '0.3px'
+                      }}>
+                        📷 {product.images.length} Photos
+                      </span>
+                    )}
                   </Link>
 
                   <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>

@@ -98,6 +98,8 @@ export default function ProductDetails() {
 
   // Related products
   const relatedProducts = products.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const productImages = (product.images && product.images.length > 0) ? product.images : [product.image];
 
   return (
     <div className="container fade-in" style={{ padding: '3rem 1.5rem', fontFamily: 'var(--font-sans)' }}>
@@ -105,39 +107,68 @@ export default function ProductDetails() {
       {/* Product Detail Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: '4rem', marginBottom: '4rem' }} className="details-grid">
         
-        {/* Left Column: Product Image */}
-        <div style={{ position: 'relative' }}>
-          <img 
-            src={product.image} 
-            alt={product.name}
-            style={{
-              width: '100%',
-              maxHeight: '520px',
-              objectFit: 'cover',
-              borderRadius: '12px',
-              border: '1.5px solid var(--border-color)',
-              boxShadow: 'var(--shadow-md)'
-            }}
-          />
-          <button 
-            onClick={() => toggleWishlist(product)}
-            style={{
-              position: 'absolute',
-              top: '1.5rem',
-              right: '1.5rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              width: '45px',
-              height: '45px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: 'var(--shadow-md)',
-              color: isWishlisted ? '#ef4444' : 'var(--primary-green)'
-            }}
-          >
-            <Heart size={20} fill={isWishlisted ? '#ef4444' : 'none'} />
-          </button>
+        {/* Left Column: Product Image & Gallery */}
+        <div>
+          <div style={{ position: 'relative' }}>
+            <img 
+              src={productImages[activeImageIndex] || product.image} 
+              alt={product.name}
+              style={{
+                width: '100%',
+                maxHeight: '520px',
+                objectFit: 'cover',
+                borderRadius: '12px',
+                border: '1.5px solid var(--border-color)',
+                boxShadow: 'var(--shadow-md)',
+                transition: 'all 0.3s ease'
+              }}
+            />
+            <button 
+              onClick={() => toggleWishlist(product)}
+              style={{
+                position: 'absolute',
+                top: '1.5rem',
+                right: '1.5rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                width: '45px',
+                height: '45px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: 'var(--shadow-md)',
+                color: isWishlisted ? '#ef4444' : 'var(--primary-green)'
+              }}
+            >
+              <Heart size={20} fill={isWishlisted ? '#ef4444' : 'none'} />
+            </button>
+          </div>
+
+          {/* Interactive Photo Gallery Thumbnails */}
+          {productImages.length > 1 && (
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }} className="custom-scroll">
+              {productImages.map((imgUrl, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActiveImageIndex(idx)}
+                  style={{
+                    border: activeImageIndex === idx ? '2px solid var(--accent-gold)' : '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    padding: '2px',
+                    backgroundColor: '#fff',
+                    cursor: 'pointer',
+                    opacity: activeImageIndex === idx ? 1 : 0.65,
+                    transition: 'all 0.2s ease',
+                    flexShrink: 0,
+                    outline: 'none'
+                  }}
+                  title={`View Picture ${idx + 1}`}
+                >
+                  <img src={imgUrl} alt={`${product.name} thumbnail ${idx + 1}`} style={{ width: '70px', height: '70px', objectFit: 'cover', borderRadius: '6px' }} />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right Column: details */}

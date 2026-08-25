@@ -48,40 +48,101 @@ export default function AdminDashboard() {
 
   const [isSubmittingProd, setIsSubmittingProd] = useState(false);
 
+  const [prodImagesList, setProdImagesList] = useState([]);
+
   const handleProductImageFileUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 8 * 1024 * 1024) {
-      if (showToast) showToast("Product picture size should be under 8MB.", "error");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setProdImage(reader.result);
-      if (showToast) showToast("Product picture selected!", "success");
-    };
-    reader.readAsDataURL(file);
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    files.forEach(file => {
+      if (file.size > 8 * 1024 * 1024) {
+        if (showToast) showToast(`File ${file.name} is over 8MB.`, "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProdImagesList(prev => [...prev, reader.result]);
+        setProdImage(prev => prev || reader.result);
+      };
+      reader.readAsDataURL(file);
+    });
+    if (showToast) showToast(`${files.length} photo(s) added to gallery!`, "success");
   };
 
-  const handleInventoryImageChange = (productId, e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      try {
-        await editProduct(productId, { image: reader.result });
-        if (showToast) showToast("Product image updated live!", "success");
-      } catch (err) {
-        if (showToast) showToast("Failed to update product image.", "error");
+  const removeProdImageFromNewForm = (indexToRemove) => {
+    setProdImagesList(prev => {
+      const updated = prev.filter((_, idx) => idx !== indexToRemove);
+      if (prodImage === prev[indexToRemove]) {
+        setProdImage(updated[0] || '');
       }
-    };
-    reader.readAsDataURL(file);
+      return updated;
+    });
+  };
+
+  const handleInventoryAddGalleryImages = (product, e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const existingImages = (product.images && product.images.length > 0) ? [...product.images] : [product.image];
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        existingImages.push(reader.result);
+        try {
+          await editProduct(product.id, { 
+            images: existingImages,
+            image: existingImages[0]
+          });
+          if (showToast) showToast("Photo added to product gallery live!", "success");
+        } catch (err) {
+          if (showToast) showToast("Failed to add photo to gallery.", "error");
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleInventoryDeleteGalleryImage = async (product, imgIndexToDelete) => {
+    const existingImages = (product.images && product.images.length > 0) ? [...product.images] : [product.image];
+    if (existingImages.length <= 1) {
+      if (showToast) showToast("A product must have at least one photo.", "error");
+      return;
+    }
+    const updatedImages = existingImages.filter((_, idx) => idx !== imgIndexToDelete);
+    try {
+      await editProduct(product.id, { 
+        images: updatedImages,
+        image: updatedImages[0]
+      });
+      if (showToast) showToast("Photo removed from gallery.", "info");
+    } catch (err) {
+      if (showToast) showToast("Failed to remove photo.", "error");
+    }
+  };
+
+  const handleInventorySetCoverImage = async (product, targetImgUrl) => {
+    const existingImages = (product.images && product.images.length > 0) ? [...product.images] : [product.image];
+    const reordered = [targetImgUrl, ...existingImages.filter(img => img !== targetImgUrl)];
+    try {
+      await editProduct(product.id, { 
+        image: targetImgUrl,
+        images: reordered
+      });
+      if (showToast) showToast("Primary cover photo updated!", "success");
+    } catch (err) {
+      if (showToast) showToast("Failed to update cover photo.", "error");
+    }
   };
 
   const handleCreateProduct = async (e) => {
     e.preventDefault();
-    if (!prodName.trim() || !prodPrice || !prodImage) {
-      if (showToast) showToast("Please enter product name, price, and select/paste an image.", "error");
+    const finalImages = prodImagesList.length > 0 
+      ? prodImagesList 
+      : (prodImage ? [prodImage] : []);
+
+    if (!prodName.trim() || !prodPrice || finalImages.length === 0) {
+      if (showToast) showToast("Please enter product name, price, and upload at least one photo.", "error");
       return;
     }
 
@@ -90,7 +151,8 @@ export default function AdminDashboard() {
       const newProd = {
         name: prodName.trim(),
         price: Number(prodPrice),
-        image: prodImage,
+        image: finalImages[0],
+        images: finalImages,
         category: prodCategory,
         description: prodDescription.trim(),
         features: prodFeatures.split('\n').filter(f => f.trim() !== ''),
@@ -104,11 +166,12 @@ export default function AdminDashboard() {
       setProdName('');
       setProdPrice('');
       setProdImage('');
+      setProdImagesList([]);
       setProdDescription('');
       setProdFeatures('');
       setProdCustomizable(false);
       setFormSuccess(true);
-      if (showToast) showToast("Product uploaded live to storefront!", "success");
+      if (showToast) showToast("Product uploaded live with multi-photo gallery!", "success");
 
       setTimeout(() => {
         setFormSuccess(false);
@@ -490,9 +553,9 @@ export default function AdminDashboard() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', marginBottom: '0.25rem' }}>Product Picture / Image</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {/* File Upload Option */}
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', marginBottom: '0.25rem' }}>Product Pictures / Photo Gallery</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  {/* File Upload Option (Multiple Photos) */}
                   <label style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -501,16 +564,17 @@ export default function AdminDashboard() {
                     border: '1.5px dashed var(--accent-gold)',
                     backgroundColor: 'rgba(212,175,55,0.08)',
                     color: 'var(--primary-green)',
-                    padding: '0.75rem',
+                    padding: '0.85rem',
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    fontSize: '0.8rem',
+                    fontSize: '0.82rem',
                     fontWeight: 'bold'
                   }}>
-                    <Upload size={16} /> Choose Photo from Device / Camera
+                    <Upload size={16} /> Upload Multiple Photos (Device / Camera)
                     <input 
                       type="file" 
                       accept="image/*" 
+                      multiple
                       onChange={handleProductImageFileUpload} 
                       style={{ display: 'none' }} 
                     />
@@ -520,19 +584,78 @@ export default function AdminDashboard() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>OR Paste Image Web URL:</span>
                   </div>
-                  <input 
-                    type="text" 
-                    value={prodImage} 
-                    onChange={e => setProdImage(e.target.value)} 
-                    placeholder="https://images.unsplash.com/..."
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px', outline: 'none', fontSize: '0.8rem' }}
-                  />
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input 
+                      type="text" 
+                      value={prodImage} 
+                      onChange={e => setProdImage(e.target.value)} 
+                      placeholder="https://images.unsplash.com/..."
+                      style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px', outline: 'none', fontSize: '0.8rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (prodImage.trim()) {
+                          setProdImagesList(prev => [...prev, prodImage.trim()]);
+                          if (showToast) showToast("URL added to photo gallery!", "success");
+                        }
+                      }}
+                      style={{
+                        backgroundColor: 'var(--primary-green)',
+                        color: 'var(--accent-gold)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '0.4rem 0.75rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      + Add URL
+                    </button>
+                  </div>
 
-                  {/* Live Thumbnail Preview */}
-                  {prodImage && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.25rem', padding: '0.5rem', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                      <img src={prodImage} alt="Preview" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px' }} />
-                      <span style={{ fontSize: '0.72rem', color: 'var(--primary-green)', fontWeight: 'bold' }}>✓ Image Ready for Upload</span>
+                  {/* Live Multi-Photo Gallery Preview Grid */}
+                  {prodImagesList.length > 0 && (
+                    <div style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--primary-green)', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Selected Photos ({prodImagesList.length})</span>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>★ First image is Primary Cover</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                        {prodImagesList.map((imgUrl, idx) => (
+                          <div key={idx} style={{ position: 'relative', width: '64px', height: '64px' }}>
+                            <img src={imgUrl} alt={`Selected ${idx + 1}`} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '6px', border: idx === 0 ? '2px solid var(--accent-gold)' : '1px solid #cbd5e1' }} />
+                            {idx === 0 && (
+                              <span style={{ position: 'absolute', top: '-6px', left: '-6px', backgroundColor: 'var(--accent-gold-dark)', color: '#fff', fontSize: '0.55rem', fontWeight: 'bold', padding: '0.1rem 0.3rem', borderRadius: '4px' }}>
+                                Cover
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeProdImageFromNewForm(idx)}
+                              style={{
+                                position: 'absolute',
+                                top: '-6px',
+                                right: '-6px',
+                                backgroundColor: '#ef4444',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '18px',
+                                height: '18px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer'
+                              }}
+                              title="Remove photo"
+                            >
+                              <Trash2 size={10} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -584,7 +707,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Current listing */}
-          <div style={{ backgroundColor: '#fff', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', maxHeight: '600px', overflowY: 'auto' }} className="custom-scroll">
+          <div style={{ backgroundColor: '#fff', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', maxHeight: '650px', overflowY: 'auto' }} className="custom-scroll">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', color: 'var(--primary-green)', margin: 0 }}>
                 Live Storefront Inventory
@@ -609,42 +732,95 @@ export default function AdminDashboard() {
                 👁 View Live Storefront ➔
               </a>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {products.map(p => (
-                <div key={p.id} style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem', alignItems: 'center' }}>
-                  {/* Image with Camera Change Trigger */}
-                  <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
-                    <img src={p.image} alt={p.name} style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
-                    <label 
-                      htmlFor={`img-change-${p.id}`}
-                      style={{
-                        position: 'absolute',
-                        bottom: '-4px',
-                        right: '-4px',
-                        backgroundColor: 'var(--primary-green)',
-                        color: 'var(--accent-gold)',
-                        borderRadius: '50%',
-                        width: '22px',
-                        height: '22px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justify: 'center',
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                        border: '1px solid #fff'
-                      }}
-                      title="Click camera icon to change product image"
-                    >
-                      <Camera size={12} />
-                      <input 
-                        id={`img-change-${p.id}`}
-                        type="file" 
-                        accept="image/*" 
-                        onChange={(e) => handleInventoryImageChange(p.id, e)} 
-                        style={{ display: 'none' }} 
-                      />
-                    </label>
-                  </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {products.map(p => {
+                const gallery = (p.images && p.images.length > 0) ? p.images : [p.image];
+                return (
+                  <div key={p.id} style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      
+                      {/* Product Gallery Strip */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                          {gallery.map((imgUrl, gIdx) => (
+                            <div key={gIdx} style={{ position: 'relative', width: '52px', height: '52px' }}>
+                              <img 
+                                src={imgUrl} 
+                                alt={`${p.name} ${gIdx + 1}`} 
+                                onClick={() => handleInventorySetCoverImage(p, imgUrl)}
+                                style={{
+                                  width: '52px',
+                                  height: '52px',
+                                  objectFit: 'cover',
+                                  borderRadius: '6px',
+                                  border: p.image === imgUrl ? '2px solid var(--accent-gold)' : '1px solid var(--border-color)',
+                                  cursor: 'pointer'
+                                }}
+                                title="Click to set as primary cover photo"
+                              />
+                              {gallery.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleInventoryDeleteGalleryImage(p, gIdx)}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '-4px',
+                                    right: '-4px',
+                                    backgroundColor: '#ef4444',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '50%',
+                                    width: '16px',
+                                    height: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justify: 'center',
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Delete photo"
+                                >
+                                  <Trash2 size={9} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+
+                          {/* Add Photo Button */}
+                          <label 
+                            htmlFor={`add-photo-${p.id}`}
+                            style={{
+                              width: '52px',
+                              height: '52px',
+                              borderRadius: '6px',
+                              border: '1.5px dashed var(--accent-gold)',
+                              backgroundColor: 'rgba(212,175,55,0.1)',
+                              color: 'var(--primary-green)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justify: 'center',
+                              cursor: 'pointer',
+                              fontSize: '0.6rem',
+                              fontWeight: 'bold',
+                              textAlign: 'center'
+                            }}
+                            title="Add photo to this product gallery"
+                          >
+                            <Plus size={14} /> Photo
+                            <input 
+                              id={`add-photo-${p.id}`}
+                              type="file" 
+                              accept="image/*" 
+                              multiple
+                              onChange={(e) => handleInventoryAddGalleryImages(p, e)} 
+                              style={{ display: 'none' }} 
+                            />
+                          </label>
+                        </div>
+                        <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
+                          📷 {gallery.length} Photo(s) • Click photo to set cover
+                        </span>
+                      </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{p.name}</div>
                     <span style={{ fontSize: '0.65rem', backgroundColor: 'var(--background-ivory)', color: 'var(--text-muted)', padding: '0.1rem 0.35rem', borderRadius: '4px', display: 'inline-block', marginTop: '0.2rem' }}>
@@ -719,11 +895,13 @@ export default function AdminDashboard() {
                     <Trash2 size={14} /> Drop
                   </button>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
+    </div>
+  )}
 
       {/* Tab 3: Atelier Box & Customization Manager */}
       {activeTab === 'atelier' && (

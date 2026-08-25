@@ -38,6 +38,11 @@ const mockStore = {
       name: 'Customized Watch',
       price: 27000,
       image: 'https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=400&q=80',
+        'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=400&q=80',
+        'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80'
+      ],
       category: 'Etched by TNE',
       description: 'Elegant golden mesh watch, custom engraved with initials or special message on the caseback.',
       customizable: true,
@@ -50,6 +55,10 @@ const mockStore = {
       name: 'Customized Necklace',
       price: 17500,
       image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80',
+        'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=400&q=80'
+      ],
       category: 'Etched by TNE',
       description: 'Custom nameplate pendant necklace plated in 18k champagne gold.',
       customizable: true,
@@ -62,6 +71,9 @@ const mockStore = {
       name: 'Engraved Bracelet',
       price: 13000,
       image: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=400&q=80'
+      ],
       category: 'Etched by TNE',
       description: 'Sleek open-cuff bracelet in premium gold metal, custom engraved with date or message.',
       customizable: true,
@@ -74,6 +86,10 @@ const mockStore = {
       name: 'Luxury Gift Box',
       price: 35000,
       image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80',
+        'https://images.unsplash.com/photo-1513885535751-8b9238bd475a?auto=format&fit=crop&w=400&q=80'
+      ],
       category: 'TNE Gift Curation',
       description: 'Our signature deep emerald gift box decorated with a luxury gold satin bow. Includes a customized journal, scented candle, and gold watch.',
       customizable: false,
@@ -255,11 +271,23 @@ export const getProductsFromDb = async () => {
 };
 
 export const addProductToDb = async (productData) => {
+  const imagesList = (productData.images && productData.images.length > 0) 
+    ? productData.images 
+    : (productData.image ? [productData.image] : []);
+  const mainImage = imagesList[0] || productData.image || '';
+
+  const newProduct = {
+    id: `prod-${Date.now()}`,
+    reviews: [],
+    ...productData,
+    image: mainImage,
+    images: imagesList
+  };
+
   if (!isMock) {
-    const docRef = await addDoc(collection(db, "products"), productData);
+    const docRef = await addDoc(collection(db, "products"), newProduct);
     return docRef.id;
   } else {
-    const newProduct = { id: `prod-${Date.now()}`, ...productData, reviews: [] };
     mockStore.products.push(newProduct);
     syncMock();
     return newProduct.id;
