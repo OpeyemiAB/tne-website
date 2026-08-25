@@ -1388,6 +1388,32 @@ export default function AdminDashboard() {
 
                                   <button
                                     onClick={async () => {
+                                      const newPass = window.prompt(`Enter new password for ${u.name} (${u.email}):`, u.password || 'staff123');
+                                      if (newPass && newPass.trim()) {
+                                        const { updateUserPasswordInDb, getUsersFromDb } = await import('../firebase');
+                                        await updateUserPasswordInDb(u.email, newPass.trim());
+                                        const refreshed = await getUsersFromDb();
+                                        setSystemUsers(refreshed);
+                                        if (showToast) showToast(`🔑 Password updated for ${u.name}!`, 'success');
+                                      }
+                                    }}
+                                    style={{
+                                      backgroundColor: 'rgba(0,75,73,0.08)',
+                                      color: 'var(--primary-green)',
+                                      border: '1px solid var(--primary-green)',
+                                      padding: '0.25rem 0.5rem',
+                                      borderRadius: '4px',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 'bold',
+                                      cursor: 'pointer'
+                                    }}
+                                    title="Change account password"
+                                  >
+                                    🔑 Pass
+                                  </button>
+
+                                  <button
+                                    onClick={async () => {
                                       if (window.confirm(`Are you sure you want to permanently delete staff account ${u.name}?`)) {
                                         const { deleteUserFromDb, getUsersFromDb } = await import('../firebase');
                                         await deleteUserFromDb(u.email);

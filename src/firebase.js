@@ -262,6 +262,20 @@ export const updateUserStatusInDb = async (email, status) => {
   }
 };
 
+export const updateUserPasswordInDb = async (email, password) => {
+  const clean = (email || '').toLowerCase();
+  if (!isMock) {
+    const querySnapshot = await getDocs(collection(db, "users"));
+    const docMatch = querySnapshot.docs.find(d => (d.data().email || '').toLowerCase() === clean);
+    if (docMatch) {
+      await updateDoc(doc(db, "users", docMatch.id), { password });
+    }
+  } else {
+    mockStore.users = mockStore.users.map(u => (u.email || '').toLowerCase() === clean ? { ...u, password } : u);
+    syncMock();
+  }
+};
+
 export const deleteUserFromDb = async (email) => {
   const clean = (email || '').toLowerCase();
   if (!isMock) {
