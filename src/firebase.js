@@ -211,6 +211,8 @@ export const resetDatabaseOrdersAndUsers = async () => {
   syncMock();
 };
 
+export const getUsersSync = () => mockStore.users;
+
 export const getUsersFromDb = async () => {
   if (!isMock) {
     const querySnapshot = await getDocs(collection(db, "users"));

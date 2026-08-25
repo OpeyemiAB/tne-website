@@ -8,7 +8,8 @@ import {
   editProductInDb,
   deleteProductFromDb,
   getAtelierOptionsFromDb,
-  updateAtelierOptionsInDb
+  updateAtelierOptionsInDb,
+  getUsersSync
 } from '../firebase';
 
 const GiftingContext = createContext();
@@ -297,10 +298,11 @@ export const GiftingProvider = ({ children }) => {
 
   const handleLogin = (email, password) => {
     const cleanEmail = (email || '').trim().toLowerCase();
-    
-    // Super Admin logins (oluwanifemiadepitan46@gmail.com, hello@thenifemiexperience.com, admin@tne.com)
+    const cleanPassword = (password || '').trim();
+
+    // 1. Super Admin logins
     if (cleanEmail === 'oluwanifemiadepitan46@gmail.com' || cleanEmail === 'hello@thenifemiexperience.com' || cleanEmail === 'admin@tne.com') {
-      if (cleanEmail === 'oluwanifemiadepitan46@gmail.com' && password && password !== 'Oyinkansola@1') {
+      if (cleanEmail === 'oluwanifemiadepitan46@gmail.com' && cleanPassword && cleanPassword !== 'Oyinkansola@1') {
         throw new Error("Invalid password for Super Admin account.");
       }
       const adminUser = { 
@@ -315,11 +317,21 @@ export const GiftingProvider = ({ children }) => {
       return adminUser;
     }
 
-    const users = JSON.parse(localStorage.getItem('tne_users') || '[]');
-    const user = users.find(u => (u.email || '').toLowerCase() === cleanEmail);
+    // 2. Staff & System Users (queries database users + local storage)
+    const localUsers = JSON.parse(localStorage.getItem('tne_users') || '[]');
+    const dbUsers = getUsersSync ? getUsersSync() : [];
+    const allUsersMap = new Map();
+
+    dbUsers.forEach(u => allUsersMap.set((u.email || '').trim().toLowerCase(), u));
+    localUsers.forEach(u => allUsersMap.set((u.email || '').trim().toLowerCase(), u));
+
+    const user = allUsersMap.get(cleanEmail);
 
     if (user) {
-      if (user.password && password && user.password !== password) {
+      if (user.status === 'Revoked') {
+        throw new Error("Access Revoked: Your staff account has been suspended by the Admin.");
+      }
+      if (user.password && cleanPassword && user.password.trim() !== cleanPassword) {
         throw new Error("Invalid password for this account.");
       }
       setCurrentUser(user);
@@ -327,6 +339,7 @@ export const GiftingProvider = ({ children }) => {
       return user;
     }
 
+    // 3. Fallback Customer Account
     const newUser = { id: `usr-${Date.now()}`, name: cleanEmail.split('@')[0], email: cleanEmail, role: 'Customer' };
     setCurrentUser(newUser);
     localStorage.setItem('tne_current_user', JSON.stringify(newUser));
