@@ -124,12 +124,12 @@ export default async function handler(req, res) {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (body) {
-        // Merge products gracefully
-        if (body.products && Array.isArray(body.products)) {
+        // Direct override for dropped products
+        if (body.overrideProducts && Array.isArray(body.products)) {
+          currentStore.products = body.products;
+        } else if (body.products && Array.isArray(body.products)) {
           const prodMap = new Map();
-          // Existing store products
           currentStore.products.forEach(p => prodMap.set(p.id, p));
-          // Body products (updates & new additions)
           body.products.forEach(p => prodMap.set(p.id, p));
           currentStore.products = Array.from(prodMap.values());
         }

@@ -158,46 +158,32 @@ const syncMock = () => {
   } catch (e) {}
 };
 
-// Initial & Periodic Cloud Fetch with Non-Destructive Merge (Admin Uploaded Data Wins Always)
+// Initial & Periodic Cloud Fetch across all devices
 export const syncCloudStateOnLoad = async () => {
   try {
-    const localProducts = JSON.parse(localStorage.getItem('tne_products') || '[]');
-    const localOrders = JSON.parse(localStorage.getItem('tne_orders') || '[]');
-
     const res = await fetch('/api/sync');
     if (res.ok) {
       const data = await res.json();
       if (data) {
-        // Non-destructive Merge for Products
-        const remoteProds = data.products || [];
-        const mergedProdsMap = new Map();
+        if (data.products && Array.isArray(data.products)) {
+          mockStore.products = data.products;
+          localStorage.setItem('tne_products', JSON.stringify(data.products));
+        }
 
-        // 1. Load remote products
-        remoteProds.forEach(p => mergedProdsMap.set(p.id, p));
+        if (data.orders && Array.isArray(data.orders)) {
+          mockStore.orders = data.orders;
+          localStorage.setItem('tne_orders', JSON.stringify(data.orders));
+        }
 
-        // 2. Preserve & merge local admin uploaded/edited products (Admin edits/uploads always win)
-        localProducts.forEach(p => mergedProdsMap.set(p.id, p));
+        if (data.users && data.users.length > 0) {
+          mockStore.users = data.users;
+          localStorage.setItem('tne_users', JSON.stringify(data.users));
+        }
 
-        mockStore.products = Array.from(mergedProdsMap.values());
-
-        // Non-destructive Merge for Orders
-        const remoteOrders = data.orders || [];
-        const mergedOrdersMap = new Map();
-        remoteOrders.forEach(o => mergedOrdersMap.set(o.id, o));
-        localOrders.forEach(o => mergedOrdersMap.set(o.id, o));
-        mockStore.orders = Array.from(mergedOrdersMap.values());
-
-        if (data.users && data.users.length > 0) mockStore.users = data.users;
-        if (data.atelierOptions) mockStore.atelierOptions = data.atelierOptions;
-
-        // Persist merged state locally so admin changes are never lost
-        localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
-        localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
-        localStorage.setItem('tne_users', JSON.stringify(mockStore.users));
-        localStorage.setItem('tne_atelier_options', JSON.stringify(mockStore.atelierOptions));
-
-        // Push merged state back to cloud
-        syncMock();
+        if (data.atelierOptions) {
+          mockStore.atelierOptions = data.atelierOptions;
+          localStorage.setItem('tne_atelier_options', JSON.stringify(data.atelierOptions));
+        }
       }
     }
   } catch (e) {}
@@ -329,20 +315,27 @@ export const editProductInDb = async (productId, updatedData) => {
 };
 
 export const deleteProductFromDb = async (productId) => {
+  const cleanId = String(productId);
+  mockStore.products = mockStore.products.filter(p => String(p.id) !== cleanId);
+  localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
+
   if (!isMock) {
-    const docRef = doc(db, "products", productId);
-    await deleteDoc(docRef);
-  } else {
-    mockStore.products = mockStore.products.filter(p => String(p.id) !== String(productId));
-    localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
     try {
-      await fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products: mockStore.products })
-      });
+      const docRef = doc(db, "products", productId);
+      await deleteDoc(docRef);
     } catch (e) {}
   }
+
+  try {
+    await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        products: mockStore.products,
+        overrideProducts: true 
+      })
+    });
+  } catch (e) {}
 };
 
 export const getOrdersFromDb = async () => {
