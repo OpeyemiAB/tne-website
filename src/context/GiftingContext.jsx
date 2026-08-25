@@ -60,20 +60,16 @@ export const GiftingProvider = ({ children }) => {
   useEffect(() => {
     refreshDatabase();
 
-    // Real-time cross-tab storage listener
-    const handleStorageChange = () => {
+    // Event-driven real-time database listener
+    const handleDbUpdate = () => {
       refreshDatabase();
     };
-    window.addEventListener('storage', handleStorageChange);
-
-    // Real-time background sync polling every 3 seconds (auto-syncs orders and products across admin & customer views)
-    const syncInterval = setInterval(() => {
-      refreshDatabase();
-    }, 3000);
+    window.addEventListener('storage', handleDbUpdate);
+    window.addEventListener('tne_db_update', handleDbUpdate);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(syncInterval);
+      window.removeEventListener('storage', handleDbUpdate);
+      window.removeEventListener('tne_db_update', handleDbUpdate);
     };
   }, []);
 

@@ -142,7 +142,11 @@ const syncMock = () => {
   localStorage.setItem('tne_users', JSON.stringify(mockStore.users));
   localStorage.setItem('tne_atelier_options', JSON.stringify(mockStore.atelierOptions));
 
-  // Push updates to central cloud API so phones, laptops, and all admin devices sync instantly
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('tne_db_update'));
+  }
+
+  // Push updates to central cloud API
   try {
     const payload = {
       orders: mockStore.orders,
@@ -158,21 +162,26 @@ const syncMock = () => {
   } catch (e) {}
 };
 
-// Initial & Periodic Cloud Fetch across all devices
+// Initial Cloud Fetch (Only syncs remote if local is uninitialized, preventing unwanted product overwrites)
 export const syncCloudStateOnLoad = async () => {
   try {
+    const hasLocalProds = localStorage.getItem('tne_products');
     const res = await fetch('/api/sync');
     if (res.ok) {
       const data = await res.json();
       if (data) {
-        if (data.products && Array.isArray(data.products)) {
-          mockStore.products = data.products;
-          localStorage.setItem('tne_products', JSON.stringify(data.products));
+        if (data.products && Array.isArray(data.products) && data.products.length > 0) {
+          if (!hasLocalProds) {
+            mockStore.products = data.products;
+            localStorage.setItem('tne_products', JSON.stringify(data.products));
+          }
         }
 
-        if (data.orders && Array.isArray(data.orders)) {
-          mockStore.orders = data.orders;
-          localStorage.setItem('tne_orders', JSON.stringify(data.orders));
+        if (data.orders && Array.isArray(data.orders) && data.orders.length > 0) {
+          if (!localStorage.getItem('tne_orders')) {
+            mockStore.orders = data.orders;
+            localStorage.setItem('tne_orders', JSON.stringify(data.orders));
+          }
         }
 
         if (data.users && data.users.length > 0) {
@@ -180,7 +189,7 @@ export const syncCloudStateOnLoad = async () => {
           localStorage.setItem('tne_users', JSON.stringify(data.users));
         }
 
-        if (data.atelierOptions) {
+        if (data.atelierOptions && Object.keys(data.atelierOptions).length > 0) {
           mockStore.atelierOptions = data.atelierOptions;
           localStorage.setItem('tne_atelier_options', JSON.stringify(data.atelierOptions));
         }
@@ -189,11 +198,6 @@ export const syncCloudStateOnLoad = async () => {
   } catch (e) {}
 };
 syncCloudStateOnLoad();
-
-// Auto-sync in background every 10 seconds for live multi-device updates
-if (typeof window !== 'undefined') {
-  setInterval(syncCloudStateOnLoad, 10000);
-}
 
 // Reset orders and users for clean start
 export const resetDatabaseOrdersAndUsers = async () => {
