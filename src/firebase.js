@@ -135,7 +135,7 @@ const mockStore = {
   }))
 };
 
-// Multi-device Central Cloud Syncer (/api/sync)
+// Non-Destructive Multi-device Central Cloud Syncer (/api/sync)
 const syncMock = () => {
   localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
   localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
@@ -158,31 +158,55 @@ const syncMock = () => {
   } catch (e) {}
 };
 
-// Initial & Periodic Cloud Fetch across all devices
+// Initial & Periodic Cloud Fetch with Non-Destructive Merge (Admin Uploaded Data Wins Always)
 export const syncCloudStateOnLoad = async () => {
   try {
+    const localProducts = JSON.parse(localStorage.getItem('tne_products') || '[]');
+    const localOrders = JSON.parse(localStorage.getItem('tne_orders') || '[]');
+
     const res = await fetch('/api/sync');
     if (res.ok) {
       const data = await res.json();
       if (data) {
-        if (data.products && data.products.length > 0) mockStore.products = data.products;
-        if (data.orders) mockStore.orders = data.orders;
+        // Non-destructive Merge for Products
+        const remoteProds = data.products || [];
+        const mergedProdsMap = new Map();
+
+        // 1. Load remote products
+        remoteProds.forEach(p => mergedProdsMap.set(p.id, p));
+
+        // 2. Preserve & merge local admin uploaded/edited products (Admin edits/uploads always win)
+        localProducts.forEach(p => mergedProdsMap.set(p.id, p));
+
+        mockStore.products = Array.from(mergedProdsMap.values());
+
+        // Non-destructive Merge for Orders
+        const remoteOrders = data.orders || [];
+        const mergedOrdersMap = new Map();
+        remoteOrders.forEach(o => mergedOrdersMap.set(o.id, o));
+        localOrders.forEach(o => mergedOrdersMap.set(o.id, o));
+        mockStore.orders = Array.from(mergedOrdersMap.values());
+
         if (data.users && data.users.length > 0) mockStore.users = data.users;
         if (data.atelierOptions) mockStore.atelierOptions = data.atelierOptions;
 
+        // Persist merged state locally so admin changes are never lost
         localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
         localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
         localStorage.setItem('tne_users', JSON.stringify(mockStore.users));
         localStorage.setItem('tne_atelier_options', JSON.stringify(mockStore.atelierOptions));
+
+        // Push merged state back to cloud
+        syncMock();
       }
     }
   } catch (e) {}
 };
 syncCloudStateOnLoad();
 
-// Auto-sync in background every 8 seconds for live multi-device updates
+// Auto-sync in background every 10 seconds for live multi-device updates
 if (typeof window !== 'undefined') {
-  setInterval(syncCloudStateOnLoad, 8000);
+  setInterval(syncCloudStateOnLoad, 10000);
 }
 
 // Reset orders and users for clean start

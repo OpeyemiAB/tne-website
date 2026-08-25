@@ -199,6 +199,30 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleRecoverDatabase = async () => {
+    try {
+      const storedProds = JSON.parse(localStorage.getItem('tne_products') || '[]');
+      const storedOrders = JSON.parse(localStorage.getItem('tne_orders') || '[]');
+      
+      if (storedProds.length > 0 || storedOrders.length > 0) {
+        await fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            products: storedProds,
+            orders: storedOrders
+          })
+        });
+        if (showToast) showToast(`Restored ${storedProds.length} products & ${storedOrders.length} orders to central server!`, "success");
+        setTimeout(() => window.location.reload(), 1200);
+      } else {
+        if (showToast) showToast("No stored admin data found on this device.", "info");
+      }
+    } catch (e) {
+      if (showToast) showToast("Recovery failed.", "error");
+    }
+  };
+
   const [staffSuccessMsg, setStaffSuccessMsg] = useState('');
 
   const handleCreateStaff = async (e) => {
@@ -250,7 +274,26 @@ export default function AdminDashboard() {
           <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.5rem', color: 'var(--primary-green)' }}>TNE Admin Panel</h1>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Monitor client purchases, manage staff, and update catalog settings.</span>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={handleRecoverDatabase}
+            style={{
+              backgroundColor: 'rgba(0,75,73,0.08)',
+              color: 'var(--primary-green)',
+              border: '1px solid var(--primary-green)',
+              padding: '0.4rem 0.75rem',
+              borderRadius: '6px',
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem'
+            }}
+            title="Recover previously saved products and orders from device cache to central server"
+          >
+            ♻️ Recover Database
+          </button>
           <button onClick={handleSignOut} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600', color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer' }}>
             <LogOut size={16} /> Sign Out
           </button>
