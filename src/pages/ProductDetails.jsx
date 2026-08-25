@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Star, Heart, Check, Sparkles, AlertCircle } from 'lucide-react';
+import { Star, Heart, Check, Sparkles, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useGifting } from '../context/GiftingContext';
 
 export default function ProductDetails() {
@@ -132,6 +132,69 @@ export default function ProductDetails() {
               alt={product.name}
               style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
             />
+
+            {/* Next / Previous Navigation Arrows */}
+            {productImages.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveImageIndex(prev => (prev - 1 + productImages.length) % productImages.length);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                    color: 'var(--primary-green)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '46px',
+                    height: '46px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+                    transition: 'all 0.2s ease'
+                  }}
+                  title="Previous picture"
+                >
+                  <ChevronLeft size={26} />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveImageIndex(prev => (prev + 1) % productImages.length);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                    color: 'var(--primary-green)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '46px',
+                    height: '46px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+                    transition: 'all 0.2s ease'
+                  }}
+                  title="Next picture"
+                >
+                  <ChevronRight size={26} />
+                </button>
+              </>
+            )}
+
             <button
               onClick={() => setIsZoomModalOpen(false)}
               style={{
@@ -152,7 +215,7 @@ export default function ProductDetails() {
             >
               ✕
             </button>
-            <div style={{ color: '#fff', marginTop: '1rem', fontSize: '0.9rem' }}>
+            <div style={{ color: '#fff', marginTop: '1rem', fontSize: '0.9rem', fontWeight: '500' }}>
               {product.name} (Picture {activeImageIndex + 1} of {productImages.length})
             </div>
           </div>
