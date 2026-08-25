@@ -333,8 +333,15 @@ export const deleteProductFromDb = async (productId) => {
     const docRef = doc(db, "products", productId);
     await deleteDoc(docRef);
   } else {
-    mockStore.products = mockStore.products.filter(p => p.id !== productId);
-    syncMock();
+    mockStore.products = mockStore.products.filter(p => String(p.id) !== String(productId));
+    localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
+    try {
+      await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: mockStore.products })
+      });
+    } catch (e) {}
   }
 };
 
