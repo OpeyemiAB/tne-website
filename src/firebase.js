@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Standard Firebase config - users can replace this with their actual config credentials
 const firebaseConfig = {
@@ -15,6 +16,7 @@ const firebaseConfig = {
 let app;
 let db;
 let auth;
+let storage;
 let isMock = true;
 
 try {
@@ -23,11 +25,52 @@ try {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     auth = getAuth(app);
+    storage = getStorage(app);
     isMock = false;
   }
 } catch (e) {
   console.warn("Firebase failed to initialize. Falling back to local state storage mock.", e);
 }
+
+// Upload file/blob/dataURL to Firebase Storage and return public HTTPS getDownloadURL
+export const uploadImageToStorage = async (fileOrDataUrl, pathPrefix = 'products') => {
+  if (!isMock && storage) {
+    try {
+      let fileToUpload = fileOrDataUrl;
+
+      // Convert Base64 data URL to Blob for Firebase Storage upload if necessary
+      if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
+        const arr = fileOrDataUrl.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        fileToUpload = new Blob([u8arr], { type: mime });
+      }
+
+      if (fileToUpload instanceof File || fileToUpload instanceof Blob) {
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.jpg`;
+        const storageRef = ref(storage, `${pathPrefix}/${fileName}`);
+        const snapshot = await uploadBytes(storageRef, fileToUpload);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        return downloadURL;
+      }
+
+      if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('http')) {
+        return fileOrDataUrl;
+      }
+    } catch (error) {
+      console.error("Firebase Storage Upload Error:", error);
+      throw new Error(`Failed to upload image to Firebase Storage: ${error.message}`);
+    }
+  }
+
+  // Fallback for mock mode
+  return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '';
+};
 
 // Highly reliable Mock Firestore that persists to localStorage when in development/mock mode
 const mockStore = {
@@ -290,34 +333,99 @@ export const deleteUserFromDb = async (email) => {
   }
 };
 
+// Real-Time Listeners using Firestore onSnapshot
+export const subscribeToProducts = (callback) => {
+  if (!isMock && db) {
+    const productsRef = collection(db, "products");
+    return onSnapshot(productsRef, (snapshot) => {
+      const liveProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      callback(liveProducts);
+    }, (error) => {
+      console.error("Error in real-time products listener:", error);
+    });
+  } else {
+    callback(mockStore.products);
+    if (typeof window !== 'undefined') {
+      const handleUpdate = () => callback(mockStore.products);
+      window.addEventListener('tne_db_update', handleUpdate);
+      return () => window.removeEventListener('tne_db_update', handleUpdate);
+    }
+    return () => {};
+  }
+};
+
+export const subscribeToOrders = (callback) => {
+  if (!isMock && db) {
+    const ordersRef = collection(db, "orders");
+    return onSnapshot(ordersRef, (snapshot) => {
+      const liveOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      callback(liveOrders);
+    }, (error) => {
+      console.error("Error in real-time orders listener:", error);
+    });
+  } else {
+    callback(mockStore.orders);
+    if (typeof window !== 'undefined') {
+      const handleUpdate = () => callback(mockStore.orders);
+      window.addEventListener('tne_db_update', handleUpdate);
+      return () => window.removeEventListener('tne_db_update', handleUpdate);
+    }
+    return () => {};
+  }
+};
+
 // Helper methods that match Firestore APIs
 export const getProductsFromDb = async () => {
-  if (!isMock) {
-    const querySnapshot = await getDocs(collection(db, "products"));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  if (!isMock && db) {
+    try {
+      const querySnapshot = await getDocs(collection(db, "products"));
+      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (err) {
+      console.error("Firestore getProducts Error:", err);
+      throw new Error(`Failed to fetch products from Firestore: ${err.message}`);
+    }
   } else {
     return mockStore.products;
   }
 };
 
 export const addProductToDb = async (productData) => {
-  const imagesList = (productData.images && productData.images.length > 0) 
+  // 1. Process and upload all images to Firebase Storage first (gets permanent HTTPS getDownloadURL)
+  const rawImages = (productData.images && productData.images.length > 0) 
     ? productData.images 
     : (productData.image ? [productData.image] : []);
-  const mainImage = imagesList[0] || productData.image || '';
+
+  const uploadedImages = await Promise.all(
+    rawImages.map(img => uploadImageToStorage(img, 'products'))
+  );
+
+  const mainImage = uploadedImages[0] || '';
 
   const newProduct = {
-    id: `prod-${Date.now()}`,
-    reviews: [],
-    ...productData,
+    name: productData.name || '',
+    price: Number(productData.price) || 0,
     image: mainImage,
-    images: imagesList
+    images: uploadedImages,
+    category: productData.category || 'TNE Collections',
+    description: productData.description || '',
+    features: productData.features || [],
+    customizable: Boolean(productData.customizable),
+    inStock: productData.inStock !== false,
+    reviews: productData.reviews || [],
+    createdAt: new Date().toISOString()
   };
 
-  if (!isMock) {
-    const docRef = await addDoc(collection(db, "products"), newProduct);
-    return docRef.id;
+  if (!isMock && db) {
+    try {
+      // 2. Write to global top-level "products" collection
+      const docRef = await addDoc(collection(db, "products"), newProduct);
+      return docRef.id;
+    } catch (err) {
+      console.error("Firestore Product Write Error:", err);
+      throw new Error(`Failed to save product to Firestore: ${err.message}`);
+    }
   } else {
+    newProduct.id = `prod-${Date.now()}`;
     mockStore.products.push(newProduct);
     syncMock();
     return newProduct.id;
@@ -325,37 +433,60 @@ export const addProductToDb = async (productData) => {
 };
 
 export const editProductInDb = async (productId, updatedData) => {
-  if (!isMock) {
-    const docRef = doc(db, "products", productId);
-    await updateDoc(docRef, updatedData);
+  let finalUpdate = { ...updatedData };
+
+  // If new image files or base64 data URLs are provided, upload them to Firebase Storage
+  if (updatedData.images && Array.isArray(updatedData.images)) {
+    const uploadedImages = await Promise.all(
+      updatedData.images.map(img => uploadImageToStorage(img, 'products'))
+    );
+    finalUpdate.images = uploadedImages;
+    finalUpdate.image = uploadedImages[0] || updatedData.image || '';
+  } else if (updatedData.image) {
+    const uploaded = await uploadImageToStorage(updatedData.image, 'products');
+    finalUpdate.image = uploaded;
+  }
+
+  if (!isMock && db) {
+    try {
+      const docRef = doc(db, "products", String(productId));
+      await updateDoc(docRef, finalUpdate);
+    } catch (err) {
+      console.error("Firestore Product Edit Error:", err);
+      throw new Error(`Failed to update product in Firestore: ${err.message}`);
+    }
   } else {
-    mockStore.products = mockStore.products.map(p => p.id === productId ? { ...p, ...updatedData } : p);
+    mockStore.products = mockStore.products.map(p => String(p.id) === String(productId) ? { ...p, ...finalUpdate } : p);
     syncMock();
   }
 };
 
 export const deleteProductFromDb = async (productId) => {
   const cleanId = String(productId);
-  mockStore.products = mockStore.products.filter(p => String(p.id) !== cleanId);
-  localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
 
-  if (!isMock) {
+  if (!isMock && db) {
     try {
-      const docRef = doc(db, "products", productId);
+      const docRef = doc(db, "products", cleanId);
       await deleteDoc(docRef);
+    } catch (err) {
+      console.error("Firestore Product Delete Error:", err);
+      throw new Error(`Failed to delete product from Firestore: ${err.message}`);
+    }
+  } else {
+    mockStore.products = mockStore.products.filter(p => String(p.id) !== cleanId);
+    localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
+
+    try {
+      await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          products: mockStore.products,
+          overrideProducts: true 
+        })
+      });
     } catch (e) {}
   }
-
-  try {
-    await fetch('/api/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        products: mockStore.products,
-        overrideProducts: true 
-      })
-    });
-  } catch (e) {}
 };
 
 export const getOrdersFromDb = async () => {
@@ -453,4 +584,4 @@ export const updateAtelierOptionsInDb = async (updatedOptions) => {
   }
 };
 
-export { db, auth, isMock };
+export { db, auth, storage, isMock };

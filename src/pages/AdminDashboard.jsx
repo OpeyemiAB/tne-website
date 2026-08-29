@@ -177,7 +177,8 @@ export default function AdminDashboard() {
         setFormSuccess(false);
       }, 4000);
     } catch (err) {
-      if (showToast) showToast("Failed to add product.", "error");
+      console.error("Product Creation Error:", err);
+      if (showToast) showToast(`Upload Failed: ${err.message || 'Check connection or permissions'}`, "error");
     } finally {
       setIsSubmittingProd(false);
     }

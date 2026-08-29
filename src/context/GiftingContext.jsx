@@ -9,7 +9,9 @@ import {
   deleteProductFromDb,
   getAtelierOptionsFromDb,
   updateAtelierOptionsInDb,
-  getUsersSync
+  getUsersSync,
+  subscribeToProducts,
+  subscribeToOrders
 } from '../firebase';
 
 const GiftingContext = createContext();
@@ -40,11 +42,10 @@ export const GiftingProvider = ({ children }) => {
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
-    // Reset toast state after 3 seconds
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3500);
   };
 
-  // Load database items on start
+  // Load database items & subscribe to real-time Firestore updates
   const refreshDatabase = async () => {
     try {
       const dbProducts = await getProductsFromDb();
@@ -61,7 +62,15 @@ export const GiftingProvider = ({ children }) => {
   useEffect(() => {
     refreshDatabase();
 
-    // Event-driven real-time database listener
+    // Subscribe to Firestore onSnapshot real-time listeners across all clients
+    const unsubProducts = subscribeToProducts((liveProducts) => {
+      setProducts(liveProducts);
+    });
+
+    const unsubOrders = subscribeToOrders((liveOrders) => {
+      setOrders(liveOrders);
+    });
+
     const handleDbUpdate = () => {
       refreshDatabase();
     };
@@ -69,6 +78,8 @@ export const GiftingProvider = ({ children }) => {
     window.addEventListener('tne_db_update', handleDbUpdate);
 
     return () => {
+      if (typeof unsubProducts === 'function') unsubProducts();
+      if (typeof unsubOrders === 'function') unsubOrders();
       window.removeEventListener('storage', handleDbUpdate);
       window.removeEventListener('tne_db_update', handleDbUpdate);
     };
