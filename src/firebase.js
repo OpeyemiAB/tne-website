@@ -205,29 +205,24 @@ const syncMock = () => {
   } catch (e) {}
 };
 
-// Initial Cloud Fetch (Only syncs remote if local is uninitialized, preventing unwanted product overwrites)
+// Central Cloud Syncer (/api/sync) - Single Source of Truth
 export const syncCloudStateOnLoad = async () => {
   try {
-    const hasLocalProds = localStorage.getItem('tne_products');
     const res = await fetch('/api/sync');
     if (res.ok) {
       const data = await res.json();
       if (data) {
         if (data.products && Array.isArray(data.products) && data.products.length > 0) {
-          if (!hasLocalProds) {
-            mockStore.products = data.products;
-            localStorage.setItem('tne_products', JSON.stringify(data.products));
-          }
+          mockStore.products = data.products;
+          localStorage.setItem('tne_products', JSON.stringify(data.products));
         }
 
-        if (data.orders && Array.isArray(data.orders) && data.orders.length > 0) {
-          if (!localStorage.getItem('tne_orders')) {
-            mockStore.orders = data.orders;
-            localStorage.setItem('tne_orders', JSON.stringify(data.orders));
-          }
+        if (data.orders && Array.isArray(data.orders)) {
+          mockStore.orders = data.orders;
+          localStorage.setItem('tne_orders', JSON.stringify(data.orders));
         }
 
-        if (data.users && data.users.length > 0) {
+        if (data.users && Array.isArray(data.users) && data.users.length > 0) {
           mockStore.users = data.users;
           localStorage.setItem('tne_users', JSON.stringify(data.users));
         }
@@ -236,11 +231,20 @@ export const syncCloudStateOnLoad = async () => {
           mockStore.atelierOptions = data.atelierOptions;
           localStorage.setItem('tne_atelier_options', JSON.stringify(data.atelierOptions));
         }
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('tne_db_update'));
+        }
       }
     }
   } catch (e) {}
 };
 syncCloudStateOnLoad();
+
+// Live background poll every 4 seconds for multi-device sync
+if (typeof window !== 'undefined') {
+  setInterval(syncCloudStateOnLoad, 4000);
+}
 
 // Reset orders and users for clean start
 export const resetDatabaseOrdersAndUsers = async () => {
