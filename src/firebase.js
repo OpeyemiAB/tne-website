@@ -205,21 +205,32 @@ const syncMock = () => {
   } catch (e) {}
 };
 
-// Central Cloud Syncer (/api/sync) - Single Source of Truth
+// Central Cloud Syncer (/api/sync) - Single Source of Truth with Non-Destructive Storage
 export const syncCloudStateOnLoad = async () => {
+  if (!isMock && db) return; // In live Firestore mode, onSnapshot handles realtime sync directly
+
   try {
     const res = await fetch('/api/sync');
     if (res.ok) {
       const data = await res.json();
       if (data) {
         if (data.products && Array.isArray(data.products) && data.products.length > 0) {
-          mockStore.products = data.products;
-          localStorage.setItem('tne_products', JSON.stringify(data.products));
+          // Non-destructive Map merge to prevent server cold-starts from wiping custom admin products
+          const existingMap = new Map();
+          mockStore.products.forEach(p => existingMap.set(p.id, p));
+          data.products.forEach(p => existingMap.set(p.id, p));
+
+          mockStore.products = Array.from(existingMap.values());
+          localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
         }
 
         if (data.orders && Array.isArray(data.orders)) {
-          mockStore.orders = data.orders;
-          localStorage.setItem('tne_orders', JSON.stringify(data.orders));
+          const existingOrdersMap = new Map();
+          mockStore.orders.forEach(o => existingOrdersMap.set(o.id, o));
+          data.orders.forEach(o => existingOrdersMap.set(o.id, o));
+
+          mockStore.orders = Array.from(existingOrdersMap.values());
+          localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
         }
 
         if (data.users && Array.isArray(data.users) && data.users.length > 0) {
@@ -241,9 +252,9 @@ export const syncCloudStateOnLoad = async () => {
 };
 syncCloudStateOnLoad();
 
-// Live background poll every 4 seconds for multi-device sync
+// Background poll every 5 seconds for mock/serverless cloud sync mode
 if (typeof window !== 'undefined') {
-  setInterval(syncCloudStateOnLoad, 4000);
+  setInterval(syncCloudStateOnLoad, 5000);
 }
 
 // Reset orders and users for clean start

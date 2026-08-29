@@ -378,8 +378,12 @@ export default function Shop() {
 
                   <Link to={`/product/${product.id}`} style={{ display: 'block', height: '240px', overflow: 'hidden', opacity: product.inStock === false ? 0.75 : 1, position: 'relative' }}>
                     <img 
-                      src={product.image || (product.images && product.images[0])} 
+                      src={product.image || (product.images && product.images[0]) || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80'} 
                       alt={product.name} 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80';
+                      }}
                       style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'var(--transition-smooth)' }}
                       className="product-grid-img"
                     />

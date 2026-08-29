@@ -47,11 +47,16 @@ export default function ProductDetails() {
   }
 
   const isWishlisted = wishlist.some(item => String(item.id) === String(product.id));
-  const productImages = (product.images && product.images.length > 0) 
-    ? product.images 
-    : [product.image || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80'];
 
-  const currentActiveImg = productImages[activeImageIndex] || productImages[0] || product.image;
+  const DEFAULT_FALLBACK_IMG = 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80';
+
+  // Sanitize and filter images list, ensuring all secondary gallery URLs are valid strings
+  const sanitizedImages = (Array.isArray(product.images) && product.images.length > 0)
+    ? product.images.filter(img => Boolean(img) && typeof img === 'string' && img.trim().length > 0)
+    : [product.image].filter(Boolean);
+
+  const productImages = sanitizedImages.length > 0 ? sanitizedImages : [DEFAULT_FALLBACK_IMG];
+  const currentActiveImg = productImages[activeImageIndex] || productImages[0] || DEFAULT_FALLBACK_IMG;
 
   // File Upload Simulation
   const handlePhotoUpload = (e) => {
@@ -231,6 +236,10 @@ export default function ProductDetails() {
             <img 
               src={currentActiveImg} 
               alt={product.name}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = DEFAULT_FALLBACK_IMG;
+              }}
               style={{
                 width: '100%',
                 maxHeight: '520px',
@@ -285,7 +294,15 @@ export default function ProductDetails() {
                   }}
                   title={`View Picture ${idx + 1}`}
                 >
-                  <img src={imgUrl} alt={`${product.name} thumbnail ${idx + 1}`} style={{ width: '70px', height: '70px', objectFit: 'cover', borderRadius: '6px' }} />
+                  <img 
+                    src={imgUrl} 
+                    alt={`${product.name} thumbnail ${idx + 1}`} 
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = DEFAULT_FALLBACK_IMG;
+                    }}
+                    style={{ width: '70px', height: '70px', objectFit: 'cover', borderRadius: '6px' }} 
+                  />
                 </button>
               ))}
             </div>
