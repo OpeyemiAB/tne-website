@@ -245,16 +245,18 @@ button {
     box-sizing: border-box !important;
   }
 
-  /* Universal Mobile Container Padding & Centering */
+  /* Universal Mobile Container Padding & Centering - 100% Identical Left and Right Spaces */
   .container,
   .shop-grid,
   .atelier-grid {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
     margin-left: auto !important;
     margin-right: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
   }
@@ -266,14 +268,18 @@ button {
     align-items: center !important;
     justify-content: center !important;
     width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
     gap: 1.25rem !important;
     box-sizing: border-box !important;
   }
 
   .luxury-card {
     width: 100% !important;
-    max-width: 340px !important;
-    margin: 0 auto !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
     box-sizing: border-box !important;
   }
 
@@ -286,13 +292,17 @@ button {
     margin: 0 auto !important;
   }
 
-  /* Atelier Panels Centering & Padding on Mobile */
+  /* Ensure aside and main add zero extra side margins/padding on mobile */
+  aside, 
+  main,
   .atelier-preview-panel,
   .atelier-custom-panel {
     width: 100% !important;
     max-width: 100% !important;
-    padding: 1.25rem 1rem !important;
-    margin: 0 auto !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
   }
@@ -304,7 +314,7 @@ button {
     justify-content: center !important;
     gap: 0.75rem !important;
     text-align: center !important;
-    padding: 0.75rem 1rem !important;
+    padding: 0.75rem 0.5rem !important;
     width: 100% !important;
     box-sizing: border-box !important;
   }
