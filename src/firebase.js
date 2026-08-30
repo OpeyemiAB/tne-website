@@ -463,7 +463,7 @@ const syncMock = () => {
   } catch (e) {}
 };
 
-// Central Cloud Syncer (/api/sync) - Single Source of Truth with Non-Destructive Storage
+// Two-Way Central Cloud Syncer (/api/sync) - Instant Multi-Device Sync
 export const syncCloudStateOnLoad = async () => {
   if (!isMock && db) return; // In live Firestore mode, onSnapshot handles realtime sync directly
 
@@ -471,48 +471,80 @@ export const syncCloudStateOnLoad = async () => {
     const res = await fetch('/api/sync');
     if (res.ok) {
       const data = await res.json();
-      if (data) {
-        if (data.products && Array.isArray(data.products) && data.products.length > 0) {
-          // Non-destructive Map merge to prevent server cold-starts from wiping custom admin products
-          const existingMap = new Map();
-          mockStore.products.forEach(p => existingMap.set(p.id, p));
-          data.products.forEach(p => existingMap.set(p.id, p));
+      let hasNewLocalProductsToPush = false;
+      const combinedMap = new Map();
 
-          mockStore.products = Array.from(existingMap.values());
-          localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
-        }
+      // 1. Load server products
+      if (data && Array.isArray(data.products)) {
+        data.products.forEach(p => {
+          if (p && p.id) combinedMap.set(String(p.id), p);
+        });
+      }
 
-        if (data.orders && Array.isArray(data.orders)) {
-          const existingOrdersMap = new Map();
-          mockStore.orders.forEach(o => existingOrdersMap.set(o.id, o));
-          data.orders.forEach(o => existingOrdersMap.set(o.id, o));
+      // 2. Merge client localStorage products (if client has items not yet on cloud server)
+      const localSavedStr = localStorage.getItem('tne_products');
+      if (localSavedStr) {
+        try {
+          const localProds = JSON.parse(localSavedStr);
+          if (Array.isArray(localProds)) {
+            localProds.forEach(p => {
+              if (p && p.id) {
+                if (!combinedMap.has(String(p.id))) {
+                  hasNewLocalProductsToPush = true;
+                }
+                combinedMap.set(String(p.id), p);
+              }
+            });
+          }
+        } catch (e) {}
+      }
 
-          mockStore.orders = Array.from(existingOrdersMap.values());
-          localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
-        }
+      const mergedProducts = Array.from(combinedMap.values());
+      mockStore.products = mergedProducts;
+      localStorage.setItem('tne_products', JSON.stringify(mergedProducts));
 
-        if (data.users && Array.isArray(data.users) && data.users.length > 0) {
-          mockStore.users = data.users;
-          localStorage.setItem('tne_users', JSON.stringify(data.users));
-        }
+      // 3. If client had local products missing from server, push complete merged list to /api/sync immediately!
+      if (hasNewLocalProductsToPush) {
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            products: mergedProducts,
+            overrideProducts: true
+          })
+        }).catch(() => {});
+      }
 
-        if (data.atelierOptions && Object.keys(data.atelierOptions).length > 0) {
-          mockStore.atelierOptions = data.atelierOptions;
-          localStorage.setItem('tne_atelier_options', JSON.stringify(data.atelierOptions));
-        }
+      if (data && Array.isArray(data.orders)) {
+        const existingOrdersMap = new Map();
+        mockStore.orders.forEach(o => existingOrdersMap.set(o.id, o));
+        data.orders.forEach(o => existingOrdersMap.set(o.id, o));
 
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('tne_db_update'));
-        }
+        mockStore.orders = Array.from(existingOrdersMap.values());
+        localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
+      }
+
+      if (data && Array.isArray(data.users) && data.users.length > 0) {
+        mockStore.users = data.users;
+        localStorage.setItem('tne_users', JSON.stringify(data.users));
+      }
+
+      if (data && data.atelierOptions && Object.keys(data.atelierOptions).length > 0) {
+        mockStore.atelierOptions = data.atelierOptions;
+        localStorage.setItem('tne_atelier_options', JSON.stringify(data.atelierOptions));
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('tne_db_update'));
       }
     }
   } catch (e) {}
 };
 syncCloudStateOnLoad();
 
-// Background poll every 5 seconds for mock/serverless cloud sync mode
+// Rapid background poll every 2 seconds for zero-delay multi-device & Incognito sync
 if (typeof window !== 'undefined') {
-  setInterval(syncCloudStateOnLoad, 5000);
+  setInterval(syncCloudStateOnLoad, 2000);
 }
 
 // Reset orders and users for clean start
