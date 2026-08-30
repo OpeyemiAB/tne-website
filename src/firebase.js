@@ -249,6 +249,111 @@ const mockStore = {
       reviews: []
     },
     {
+      id: 'prod-customize-bracelet',
+      name: 'Customize bracelet',
+      price: 7000,
+      image: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=400&q=80'
+      ],
+      category: 'Etched by TNE',
+      description: 'Custom engraved gold bar name bracelet with initial charms.',
+      customizable: true,
+      features: ['18k Gold Plated', 'Custom name engraving', 'Monique & Signature charms'],
+      inStock: true,
+      reviews: [{ rating: 5, comment: 'Engraving came out super sharp and beautiful!', user: 'Monique' }]
+    },
+    {
+      id: 'prod-customize-journal',
+      name: 'Customize journal',
+      price: 17000,
+      image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80'
+      ],
+      category: 'Etched by TNE',
+      description: 'Custom laser engraved wooden journal and pen set with personalized photo and Bible verse.',
+      customizable: true,
+      features: ['Natural bamboo wood cover', 'Custom photo engraving', 'Includes matching engraved pen'],
+      inStock: true,
+      reviews: [{ rating: 5, comment: 'Purchased for Pastor Popoola, amazing quality!', user: 'Grace' }]
+    },
+    {
+      id: 'prod-one',
+      name: 'one',
+      price: 15000,
+      image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=400&q=80'
+      ],
+      category: 'Etched by TNE',
+      description: 'Custom TNE Personalized Gift item.',
+      customizable: true,
+      features: ['Custom laser etching'],
+      inStock: true,
+      reviews: []
+    },
+    {
+      id: 'prod-two',
+      name: 'two',
+      price: 20000,
+      image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80'
+      ],
+      category: 'Etched by TNE',
+      description: 'Custom TNE Personalized Item.',
+      customizable: true,
+      features: ['Custom initial engraving'],
+      inStock: true,
+      reviews: []
+    },
+    {
+      id: 'prod-three',
+      name: 'three',
+      price: 25000,
+      image: 'https://images.unsplash.com/photo-1513885535751-8b9238bd475a?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1513885535751-8b9238bd475a?auto=format&fit=crop&w=400&q=80'
+      ],
+      category: 'TNE Gift Curation',
+      description: 'TNE Curated Gift Box collection.',
+      customizable: false,
+      features: ['Signature TNE Emerald box'],
+      inStock: true,
+      reviews: []
+    },
+    {
+      id: 'prod-starter-box',
+      name: 'Starter Gift Box',
+      price: 10000,
+      image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80'
+      ],
+      category: 'TNE Gift Curation',
+      description: 'Essential TNE luxury gift box including leather keyholder and QR card.',
+      customizable: false,
+      features: ['Leather Keyholder', 'QR Greeting Card'],
+      inStock: true,
+      reviews: []
+    },
+    {
+      id: 'prod-classic-box',
+      name: 'Classic Luxury Box',
+      price: 25000,
+      image: 'https://images.unsplash.com/photo-1513885535751-8b9238bd475a?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1513885535751-8b9238bd475a?auto=format&fit=crop&w=400&q=80'
+      ],
+      category: 'TNE Gift Curation',
+      description: 'Classic luxury gift box with scented candle, keyholder and custom card.',
+      customizable: false,
+      features: ['Scented Candle', 'Leather Keyholder', 'QR Greeting Card'],
+      inStock: true,
+      reviews: []
+    },
+    {
       id: 'prod-check-now',
       name: 'check now',
       price: 1000,
