@@ -463,7 +463,7 @@ const syncMock = () => {
   } catch (e) {}
 };
 
-// Two-Way Central Cloud Syncer (/api/sync) - Instant Multi-Device Sync
+// Two-Way Central Cloud Syncer (/api/sync) - Instant Multi-Device & Instant Drop Sync
 export const syncCloudStateOnLoad = async () => {
   if (!isMock && db) return; // In live Firestore mode, onSnapshot handles realtime sync directly
 
@@ -474,21 +474,31 @@ export const syncCloudStateOnLoad = async () => {
       let hasNewLocalProductsToPush = false;
       const combinedMap = new Map();
 
-      // 1. Load server products
+      // Read local dropped product IDs set
+      const localDroppedStr = localStorage.getItem('tne_dropped_products') || '[]';
+      const droppedSet = new Set(JSON.parse(localDroppedStr).map(String));
+      if (data && Array.isArray(data.droppedIds)) {
+        data.droppedIds.forEach(id => droppedSet.add(String(id)));
+        localStorage.setItem('tne_dropped_products', JSON.stringify(Array.from(droppedSet)));
+      }
+
+      // 1. Load server products (filtering dropped items)
       if (data && Array.isArray(data.products)) {
         data.products.forEach(p => {
-          if (p && p.id) combinedMap.set(String(p.id), p);
+          if (p && p.id && !droppedSet.has(String(p.id))) {
+            combinedMap.set(String(p.id), p);
+          }
         });
       }
 
-      // 2. Merge client localStorage products (if client has items not yet on cloud server)
+      // 2. Merge client localStorage products (filtering dropped items)
       const localSavedStr = localStorage.getItem('tne_products');
       if (localSavedStr) {
         try {
           const localProds = JSON.parse(localSavedStr);
           if (Array.isArray(localProds)) {
             localProds.forEach(p => {
-              if (p && p.id) {
+              if (p && p.id && !droppedSet.has(String(p.id))) {
                 if (!combinedMap.has(String(p.id))) {
                   hasNewLocalProductsToPush = true;
                 }
@@ -510,7 +520,8 @@ export const syncCloudStateOnLoad = async () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             products: mergedProducts,
-            overrideProducts: true
+            overrideProducts: true,
+            droppedIds: Array.from(droppedSet)
           })
         }).catch(() => {});
       }
@@ -767,6 +778,17 @@ export const editProductInDb = async (productId, updatedData, onProgress = () =>
 export const deleteProductFromDb = async (productId) => {
   const cleanId = String(productId);
 
+  // 1. Add to local dropped IDs list
+  const localDropped = JSON.parse(localStorage.getItem('tne_dropped_products') || '[]');
+  if (!localDropped.includes(cleanId)) {
+    localDropped.push(cleanId);
+    localStorage.setItem('tne_dropped_products', JSON.stringify(localDropped));
+  }
+
+  // 2. Filter product out of in-memory store and localStorage
+  mockStore.products = mockStore.products.filter(p => String(p.id) !== cleanId);
+  localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
+
   if (!isMock && db) {
     try {
       const docRef = doc(db, "products", cleanId);
@@ -775,20 +797,23 @@ export const deleteProductFromDb = async (productId) => {
       console.error("Firestore Product Delete Error:", err);
       throw new Error(`Failed to delete product from Firestore: ${err.message}`);
     }
-  } else {
-    mockStore.products = mockStore.products.filter(p => String(p.id) !== cleanId);
-    localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
+  }
 
-    try {
-      await fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          products: mockStore.products,
-          overrideProducts: true 
-        })
-      });
-    } catch (e) {}
+  // 3. POST override to cloud server with droppedIds list
+  try {
+    await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        products: mockStore.products,
+        overrideProducts: true,
+        droppedIds: localDropped
+      })
+    });
+  } catch (e) {}
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('tne_db_update'));
   }
 };
 

@@ -274,6 +274,15 @@ export default async function handler(req, res) {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (body) {
+        if (body.droppedIds && Array.isArray(body.droppedIds)) {
+          if (!currentStore.droppedIds) currentStore.droppedIds = [];
+          body.droppedIds.forEach(id => {
+            if (!currentStore.droppedIds.includes(String(id))) {
+              currentStore.droppedIds.push(String(id));
+            }
+          });
+        }
+
         // Direct override for dropped products
         if (body.overrideProducts && Array.isArray(body.products)) {
           currentStore.products = body.products;
@@ -282,6 +291,12 @@ export default async function handler(req, res) {
           currentStore.products.forEach(p => prodMap.set(p.id, p));
           body.products.forEach(p => prodMap.set(p.id, p));
           currentStore.products = Array.from(prodMap.values());
+        }
+
+        // Always purge any dropped IDs from currentStore.products
+        if (currentStore.droppedIds && currentStore.droppedIds.length > 0) {
+          const droppedSet = new Set(currentStore.droppedIds.map(String));
+          currentStore.products = currentStore.products.filter(p => p && p.id && !droppedSet.has(String(p.id)));
         }
 
         // Merge orders gracefully
