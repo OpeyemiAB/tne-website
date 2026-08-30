@@ -249,6 +249,51 @@ const mockStore = {
       reviews: []
     },
     {
+      id: 'prod-check-now',
+      name: 'check now',
+      price: 1000,
+      image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80'
+      ],
+      category: 'Etched by TNE',
+      description: 'Custom etched product.',
+      customizable: true,
+      features: ['Custom engraving'],
+      inStock: true,
+      reviews: []
+    },
+    {
+      id: 'prod-we',
+      name: 'we',
+      price: 0,
+      image: 'https://images.unsplash.com/photo-1513885535751-8b9238bd475a?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1513885535751-8b9238bd475a?auto=format&fit=crop&w=400&q=80'
+      ],
+      category: 'Etched by TNE',
+      description: 'Custom product.',
+      customizable: true,
+      features: [],
+      inStock: true,
+      reviews: []
+    },
+    {
+      id: 'prod-56',
+      name: '56',
+      price: 0,
+      image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80'
+      ],
+      category: 'TNE Collections',
+      description: 'Luxury Collection item.',
+      customizable: false,
+      features: [],
+      inStock: true,
+      reviews: []
+    },
+    {
       id: 'perfume-set',
       name: 'Perfume Set',
       price: 22000,
