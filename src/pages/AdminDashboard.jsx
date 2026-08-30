@@ -49,24 +49,18 @@ export default function AdminDashboard() {
   const [isSubmittingProd, setIsSubmittingProd] = useState(false);
 
   const [prodImagesList, setProdImagesList] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState(null);
 
   const handleProductImageFileUpload = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
+    // Unlimited file size & file count upload queue
     files.forEach(file => {
-      if (file.size > 8 * 1024 * 1024) {
-        if (showToast) showToast(`File ${file.name} is over 8MB.`, "error");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProdImagesList(prev => [...prev, reader.result]);
-        setProdImage(prev => prev || reader.result);
-      };
-      reader.readAsDataURL(file);
+      setProdImagesList(prev => [...prev, file]);
+      setProdImage(prev => prev || file);
     });
-    if (showToast) showToast(`${files.length} photo(s) added to gallery!`, "success");
+    if (showToast) showToast(`✓ ${files.length} photo(s) added to upload queue!`, "success");
   };
 
   const removeProdImageFromNewForm = (indexToRemove) => {
@@ -147,6 +141,8 @@ export default function AdminDashboard() {
     }
 
     setIsSubmittingProd(true);
+    setUploadProgress({ current: 0, total: finalImages.length, percentage: 0, text: 'Preparing WebP image compression...' });
+
     try {
       const newProd = {
         name: prodName.trim(),
@@ -160,7 +156,14 @@ export default function AdminDashboard() {
         inStock: true
       };
 
-      await addProduct(newProd);
+      await addProduct(newProd, (prog) => {
+        setUploadProgress({
+          current: prog.current,
+          total: prog.total,
+          percentage: prog.percentage,
+          text: `Uploading picture ${prog.current} of ${prog.total} (${prog.percentage}%)`
+        });
+      });
 
       // Reset form
       setProdName('');
@@ -171,7 +174,7 @@ export default function AdminDashboard() {
       setProdFeatures('');
       setProdCustomizable(false);
       setFormSuccess(true);
-      if (showToast) showToast("Product uploaded live with multi-photo gallery!", "success");
+      if (showToast) showToast(`✓ Product "${prodName}" uploaded live with ${finalImages.length} photo(s)!`, "success");
 
       setTimeout(() => {
         setFormSuccess(false);
@@ -181,6 +184,7 @@ export default function AdminDashboard() {
       if (showToast) showToast(`Upload Failed: ${err.message || 'Check connection or permissions'}`, "error");
     } finally {
       setIsSubmittingProd(false);
+      setUploadProgress(null);
     }
   };
 
@@ -739,13 +743,25 @@ export default function AdminDashboard() {
                 </label>
               </div>
 
+              {uploadProgress && (
+                <div style={{ margin: '0.5rem 0', padding: '0.85rem', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--primary-green)', marginBottom: '0.4rem' }}>
+                    <span>{uploadProgress.text}</span>
+                    <span>{uploadProgress.percentage}%</span>
+                  </div>
+                  <div style={{ width: '100%', height: '8px', backgroundColor: '#dcfce7', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${uploadProgress.percentage}%`, height: '100%', backgroundColor: 'var(--primary-green)', transition: 'width 0.2s ease' }} />
+                  </div>
+                </div>
+              )}
+
               <button 
                 type="submit" 
                 disabled={isSubmittingProd}
                 className="btn-gold" 
                 style={{ justifyContent: 'center', padding: '0.75rem', opacity: isSubmittingProd ? 0.7 : 1, cursor: isSubmittingProd ? 'not-allowed' : 'pointer' }}
               >
-                <Plus size={18} /> {isSubmittingProd ? 'Uploading Product...' : 'Upload Product'}
+                <Plus size={18} /> {isSubmittingProd ? (uploadProgress ? uploadProgress.text : 'Uploading Product...') : 'Upload Product'}
               </button>
             </form>
           </div>

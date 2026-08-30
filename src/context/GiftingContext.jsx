@@ -255,22 +255,24 @@ export const GiftingProvider = ({ children }) => {
   };
 
   // Admin Inventory Management
-  const addProduct = async (productData) => {
+  const addProduct = async (productData, onProgress) => {
     try {
-      const id = await addProductToDb(productData);
+      const id = await addProductToDb(productData, onProgress);
       await refreshDatabase();
       return id;
     } catch (e) {
       console.error("Adding product failed:", e);
+      throw e;
     }
   };
 
-  const editProduct = async (productId, updatedData) => {
+  const editProduct = async (productId, updatedData, onProgress) => {
     try {
-      await editProductInDb(productId, updatedData);
+      await editProductInDb(productId, updatedData, onProgress);
       await refreshDatabase();
     } catch (e) {
       console.error("Editing product failed:", e);
+      throw e;
     }
   };
 

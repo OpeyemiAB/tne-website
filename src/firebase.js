@@ -32,6 +32,64 @@ try {
   console.warn("Firebase failed to initialize. Falling back to local state storage mock.", e);
 }
 
+// Client-Side WebP Compression Helper (Scales max dimension to 1200px and converts to WebP)
+export const compressImageToWebP = (fileOrDataUrl, maxDimension = 1200, quality = 0.8) => {
+  return new Promise((resolve) => {
+    if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('http') && !fileOrDataUrl.startsWith('data:')) {
+      return resolve(fileOrDataUrl);
+    }
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            const dataUrl = canvas.toDataURL('image/webp', quality);
+            resolve(dataUrl);
+          }
+        },
+        'image/webp',
+        quality
+      );
+    };
+
+    img.onerror = () => {
+      resolve(fileOrDataUrl);
+    };
+
+    if (fileOrDataUrl instanceof File || fileOrDataUrl instanceof Blob) {
+      img.src = URL.createObjectURL(fileOrDataUrl);
+    } else if (typeof fileOrDataUrl === 'string') {
+      img.src = fileOrDataUrl;
+    } else {
+      resolve(fileOrDataUrl);
+    }
+  });
+};
+
 // Upload file/blob/dataURL to Firebase Storage and return public HTTPS getDownloadURL
 export const uploadImageToStorage = async (fileOrDataUrl, pathPrefix = 'products') => {
   if (!isMock && storage) {
@@ -52,7 +110,7 @@ export const uploadImageToStorage = async (fileOrDataUrl, pathPrefix = 'products
       }
 
       if (fileToUpload instanceof File || fileToUpload instanceof Blob) {
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.jpg`;
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.webp`;
         const storageRef = ref(storage, `${pathPrefix}/${fileName}`);
         const snapshot = await uploadBytes(storageRef, fileToUpload);
         const downloadURL = await getDownloadURL(snapshot.ref);
@@ -68,8 +126,39 @@ export const uploadImageToStorage = async (fileOrDataUrl, pathPrefix = 'products
     }
   }
 
-  // Fallback for mock mode
+  // Fallback for mock mode - compress if data URL
+  if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
+    return fileOrDataUrl;
+  }
   return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '';
+};
+
+// Parallel Batch Uploads (3-5 at a time) with visual progress updates
+export const uploadImagesInBatches = async (items, onProgress = () => {}, batchSize = 3) => {
+  const results = [];
+  const total = items.length;
+
+  for (let i = 0; i < total; i += batchSize) {
+    const chunk = items.slice(i, i + batchSize);
+
+    const batchResults = await Promise.all(
+      chunk.map(async (item, chunkIndex) => {
+        const currentIndex = i + chunkIndex + 1;
+        onProgress({ current: currentIndex, total, percentage: Math.round((currentIndex / total) * 100) });
+
+        // 1. Compress to WebP
+        const compressed = await compressImageToWebP(item, 1200, 0.8);
+
+        // 2. Upload to Cloud Storage
+        const downloadUrl = await uploadImageToStorage(compressed, 'products');
+        return downloadUrl;
+      })
+    );
+
+    results.push(...batchResults);
+  }
+
+  return results;
 };
 
 // Highly reliable Mock Firestore that persists to localStorage when in development/mock mode
@@ -404,15 +493,13 @@ export const getProductsFromDb = async () => {
   }
 };
 
-export const addProductToDb = async (productData) => {
-  // 1. Process and upload all images to Firebase Storage first (gets permanent HTTPS getDownloadURL)
+export const addProductToDb = async (productData, onProgress = () => {}) => {
+  // 1. Process, compress to WebP, and upload all images in parallel batches
   const rawImages = (productData.images && productData.images.length > 0) 
     ? productData.images 
     : (productData.image ? [productData.image] : []);
 
-  const uploadedImages = await Promise.all(
-    rawImages.map(img => uploadImageToStorage(img, 'products'))
-  );
+  const uploadedImages = await uploadImagesInBatches(rawImages, onProgress, 4);
 
   const mainImage = uploadedImages[0] || '';
 
@@ -421,6 +508,7 @@ export const addProductToDb = async (productData) => {
     price: Number(productData.price) || 0,
     image: mainImage,
     images: uploadedImages,
+    imageUrls: uploadedImages,
     category: productData.category || 'TNE Collections',
     description: productData.description || '',
     features: productData.features || [],
@@ -447,19 +535,18 @@ export const addProductToDb = async (productData) => {
   }
 };
 
-export const editProductInDb = async (productId, updatedData) => {
+export const editProductInDb = async (productId, updatedData, onProgress = () => {}) => {
   let finalUpdate = { ...updatedData };
 
-  // If new image files or base64 data URLs are provided, upload them to Firebase Storage
+  // If new image files or base64 data URLs are provided, upload in parallel WebP batches
   if (updatedData.images && Array.isArray(updatedData.images)) {
-    const uploadedImages = await Promise.all(
-      updatedData.images.map(img => uploadImageToStorage(img, 'products'))
-    );
+    const uploadedImages = await uploadImagesInBatches(updatedData.images, onProgress, 4);
     finalUpdate.images = uploadedImages;
+    finalUpdate.imageUrls = uploadedImages;
     finalUpdate.image = uploadedImages[0] || updatedData.image || '';
   } else if (updatedData.image) {
-    const uploaded = await uploadImageToStorage(updatedData.image, 'products');
-    finalUpdate.image = uploaded;
+    const uploaded = await uploadImagesInBatches([updatedData.image], onProgress, 1);
+    finalUpdate.image = uploaded[0] || '';
   }
 
   if (!isMock && db) {
