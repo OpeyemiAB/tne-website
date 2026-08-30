@@ -55,12 +55,16 @@ export default function AdminDashboard() {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
-    // Unlimited file size & file count upload queue
     files.forEach(file => {
-      setProdImagesList(prev => [...prev, file]);
-      setProdImage(prev => prev || file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result;
+        setProdImagesList(prev => [...prev, dataUrl]);
+        setProdImage(prev => (prev && typeof prev === 'string' && (prev.startsWith('http') || prev.startsWith('data:')) ? prev : dataUrl));
+      };
+      reader.readAsDataURL(file);
     });
-    if (showToast) showToast(`✓ ${files.length} photo(s) added to upload queue!`, "success");
+    if (showToast) showToast(`✓ ${files.length} photo(s) added to gallery!`, "success");
   };
 
   const removeProdImageFromNewForm = (indexToRemove) => {
@@ -635,7 +639,7 @@ export default function AdminDashboard() {
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <input 
                       type="text" 
-                      value={prodImage} 
+                      value={typeof prodImage === 'string' ? (prodImage.startsWith('data:') ? '[Uploaded Photo]' : prodImage) : ''} 
                       onChange={e => setProdImage(e.target.value)} 
                       placeholder="https://images.unsplash.com/..."
                       style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px', outline: 'none', fontSize: '0.8rem' }}
