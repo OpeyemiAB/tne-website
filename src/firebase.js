@@ -32,48 +32,57 @@ try {
   console.warn("Firebase failed to initialize. Falling back to local state storage mock.", e);
 }
 
-// Client-Side WebP Compression Helper (Scales max dimension to 1200px and converts to WebP)
-export const compressImageToWebP = (fileOrDataUrl, maxDimension = 1200, quality = 0.8) => {
+// Client-Side WebP/JPEG Compression Helper (Mobile Safari & Chrome compatible)
+export const compressImageToWebP = (fileOrDataUrl, maxDimension = 1200, quality = 0.82) => {
   return new Promise((resolve) => {
     if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('http') && !fileOrDataUrl.startsWith('data:')) {
       return resolve(fileOrDataUrl);
     }
 
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+
+    // Only set crossOrigin for external http URLs to avoid mobile blob canvas tainting
+    if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('http')) {
+      img.crossOrigin = 'anonymous';
+    }
 
     img.onload = () => {
-      let width = img.width;
-      let height = img.height;
+      try {
+        let width = img.width || 800;
+        let height = img.height || 800;
 
-      if (width > maxDimension || height > maxDimension) {
-        if (width > height) {
-          height = Math.round((height * maxDimension) / width);
-          width = maxDimension;
-        } else {
-          width = Math.round((width * maxDimension) / height);
-          height = maxDimension;
-        }
-      }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(blob);
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
           } else {
-            const dataUrl = canvas.toDataURL('image/webp', quality);
-            resolve(dataUrl);
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
           }
-        },
-        'image/webp',
-        quality
-      );
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob && blob.size > 0) {
+              resolve(blob);
+            } else {
+              const dataUrl = canvas.toDataURL('image/jpeg', quality);
+              resolve(dataUrl);
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      } catch (e) {
+        console.warn("Mobile canvas compression fallback triggered", e);
+        resolve(fileOrDataUrl);
+      }
     };
 
     img.onerror = () => {
@@ -81,7 +90,12 @@ export const compressImageToWebP = (fileOrDataUrl, maxDimension = 1200, quality 
     };
 
     if (fileOrDataUrl instanceof File || fileOrDataUrl instanceof Blob) {
-      img.src = URL.createObjectURL(fileOrDataUrl);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve(fileOrDataUrl);
+      reader.readAsDataURL(fileOrDataUrl);
     } else if (typeof fileOrDataUrl === 'string') {
       img.src = fileOrDataUrl;
     } else {
@@ -110,7 +124,7 @@ export const uploadImageToStorage = async (fileOrDataUrl, pathPrefix = 'products
       }
 
       if (fileToUpload instanceof File || fileToUpload instanceof Blob) {
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.webp`;
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.jpg`;
         const storageRef = ref(storage, `${pathPrefix}/${fileName}`);
         const snapshot = await uploadBytes(storageRef, fileToUpload);
         const downloadURL = await getDownloadURL(snapshot.ref);
@@ -122,14 +136,19 @@ export const uploadImageToStorage = async (fileOrDataUrl, pathPrefix = 'products
       }
     } catch (error) {
       console.error("Firebase Storage Upload Error:", error);
-      throw new Error(`Failed to upload image to Firebase Storage: ${error.message}`);
     }
   }
 
-  // Fallback for mock mode - compress if data URL
-  if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
-    return fileOrDataUrl;
+  // Guaranteed fallback for mobile/mock mode: Convert File or Blob to Data URL so it is never blank
+  if (fileOrDataUrl instanceof File || fileOrDataUrl instanceof Blob) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result || '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(fileOrDataUrl);
+    });
   }
+
   return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '';
 };
 
