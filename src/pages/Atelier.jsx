@@ -184,10 +184,8 @@ export default function Atelier() {
     return `${calculatedPx}px`;
   };
 
-  const calculatedTotal = basePrice + selectedItems.filter(i => !i.isIncluded).reduce((sum, item) => sum + item.price, 0);
-
   return (
-    <div className="container fade-in" style={{ padding: '3rem 1.5rem', fontFamily: 'var(--font-sans)' }}>
+    <div className="container fade-in" style={{ fontFamily: 'var(--font-sans)', width: '100%', boxSizing: 'border-box' }}>
       {/* Atelier Header */}
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(212,175,55,0.1)', color: 'var(--accent-gold-dark)', padding: '0.4rem 1rem', borderRadius: '50px', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.75rem' }}>

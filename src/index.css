@@ -246,8 +246,8 @@ button {
   }
 
   .container {
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
     margin-left: auto !important;
     margin-right: auto !important;
     width: 100% !important;
@@ -258,20 +258,31 @@ button {
   .shop-grid,
   .atelier-grid {
     grid-template-columns: 1fr !important;
-    padding: 1.5rem 1rem !important;
+    padding: 1.5rem 1.25rem !important;
+    gap: 1.5rem !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
   }
 
+  .product-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .luxury-card,
   .atelier-preview-panel,
   .atelier-custom-panel,
-  .product-card,
+  .shop-controls,
   aside,
-  main,
-  div {
-    max-width: 100%;
-    box-sizing: border-box;
+  main {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    box-sizing: border-box !important;
   }
   
   .atelier-summary-row {

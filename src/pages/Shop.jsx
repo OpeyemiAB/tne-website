@@ -83,11 +83,10 @@ export default function Shop() {
     setActiveOccasion('');
     setSearchFilter('');
     setPriceRange('all');
-    setSortBy('popular');
   };
 
   return (
-    <div className="container fade-in shop-grid" style={{ padding: '3rem 1.5rem', display: 'grid', gridTemplateColumns: '260px 1fr', gap: '2rem', fontFamily: 'var(--font-sans)' }}>
+    <div className="container fade-in shop-grid" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '2rem', fontFamily: 'var(--font-sans)', width: '100%', boxSizing: 'border-box' }}>
       
       {/* 1. Sidebar Filters */}
       <aside style={{ backgroundColor: '#fff', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.5rem', alignSelf: 'start' }}>
@@ -328,7 +327,7 @@ export default function Shop() {
             </button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.5rem' }}>
+          <div className="product-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.5rem', width: '100%', boxSizing: 'border-box' }}>
             {sortedProducts.map((product) => {
               const isWishlisted = wishlist.some(item => item.id === product.id);
               return (
