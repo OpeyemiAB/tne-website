@@ -41,6 +41,22 @@ export default function AdminDashboard() {
     loadUsers();
   }, [activeTab]);
 
+  // Automatic Browser Storage Cleanser on Mount to prevent quota exceeded errors
+  useEffect(() => {
+    try {
+      let totalLen = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('tne_')) totalLen += (localStorage.getItem(k) || '').length;
+      }
+      if (totalLen > 2000000) {
+        console.warn("Clogged browser cache detected. Clearing localStorage...");
+        localStorage.removeItem('tne_products');
+        localStorage.removeItem('tne_dropped_products');
+      }
+    } catch (e) {}
+  }, []);
+
   const handleSignOut = () => {
     handleLogout();
     navigate('/');
@@ -338,6 +354,29 @@ export default function AdminDashboard() {
           style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
         >
           <Users size={18} /> Staff & Accounts
+        </button>
+        <button 
+          type="button"
+          onClick={() => {
+            localStorage.clear();
+            if (showToast) showToast("Browser cache cleared cleanly! Refreshing...", "success");
+            setTimeout(() => window.location.reload(), 600);
+          }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            backgroundColor: '#fffbe6',
+            color: '#d46b08',
+            border: '1px solid #ffe58f',
+            borderRadius: '6px',
+            padding: '0.5rem 0.85rem',
+            fontSize: '0.8rem',
+            fontWeight: 'bold',
+            cursor: 'pointer'
+          }}
+        >
+          🧹 Clear Storage Cache
         </button>
       </div>
 
