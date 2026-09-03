@@ -33,7 +33,7 @@ try {
 }
 
 // Client-Side WebP/JPEG Compression Helper (Mobile Safari & Chrome compatible)
-export const compressImageToWebP = (fileOrDataUrl, maxDimension = 1200, quality = 0.82) => {
+export const compressImageToWebP = (fileOrDataUrl, maxDimension = 800, quality = 0.72) => {
   return new Promise((resolve) => {
     if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('http') && !fileOrDataUrl.startsWith('data:')) {
       return resolve(fileOrDataUrl);
@@ -350,51 +350,6 @@ const mockStore = {
       description: 'Classic luxury gift box with scented candle, keyholder and custom card.',
       customizable: false,
       features: ['Scented Candle', 'Leather Keyholder', 'QR Greeting Card'],
-      inStock: true,
-      reviews: []
-    },
-    {
-      id: 'prod-check-now',
-      name: 'check now',
-      price: 1000,
-      image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80',
-      images: [
-        'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80'
-      ],
-      category: 'Etched by TNE',
-      description: 'Custom etched product.',
-      customizable: true,
-      features: ['Custom engraving'],
-      inStock: true,
-      reviews: []
-    },
-    {
-      id: 'prod-we',
-      name: 'we',
-      price: 0,
-      image: 'https://images.unsplash.com/photo-1513885535751-8b9238bd475a?auto=format&fit=crop&w=400&q=80',
-      images: [
-        'https://images.unsplash.com/photo-1513885535751-8b9238bd475a?auto=format&fit=crop&w=400&q=80'
-      ],
-      category: 'Etched by TNE',
-      description: 'Custom product.',
-      customizable: true,
-      features: [],
-      inStock: true,
-      reviews: []
-    },
-    {
-      id: 'prod-56',
-      name: '56',
-      price: 0,
-      image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80',
-      images: [
-        'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80'
-      ],
-      category: 'TNE Collections',
-      description: 'Luxury Collection item.',
-      customizable: false,
-      features: [],
       inStock: true,
       reviews: []
     },
