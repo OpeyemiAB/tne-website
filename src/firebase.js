@@ -255,12 +255,35 @@ const mockStore = {
   }))
 };
 
+// Safe LocalStorage Set Helper (Prevents QuotaExceededError DOMException 22)
+const safeSetLocalStorage = (key, value) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    console.warn(`localStorage quota exceeded for ${key}. Applying storage compression...`);
+    try {
+      if (key === 'tne_products' && Array.isArray(mockStore.products)) {
+        // Downscale data URLs for local storage
+        const lightweightProducts = mockStore.products.map(p => ({
+          ...p,
+          image: typeof p.image === 'string' && p.image.startsWith('data:') && p.image.length > 30000 ? p.image.substring(0, 30000) : p.image,
+          images: Array.isArray(p.images) ? p.images.map(img => typeof img === 'string' && img.startsWith('data:') && img.length > 30000 ? img.substring(0, 30000) : img) : p.images,
+          imageUrls: Array.isArray(p.imageUrls) ? p.imageUrls.map(img => typeof img === 'string' && img.startsWith('data:') && img.length > 30000 ? img.substring(0, 30000) : img) : p.imageUrls
+        }));
+        localStorage.setItem(key, JSON.stringify(lightweightProducts));
+      }
+    } catch (innerErr) {
+      console.warn("Storage quota fallback active.");
+    }
+  }
+};
+
 // Non-Destructive Multi-device Central Cloud Syncer (/api/sync)
 const syncMock = () => {
-  localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
-  localStorage.setItem('tne_products', JSON.stringify(mockStore.products));
-  localStorage.setItem('tne_users', JSON.stringify(mockStore.users));
-  localStorage.setItem('tne_atelier_options', JSON.stringify(mockStore.atelierOptions));
+  safeSetLocalStorage('tne_orders', JSON.stringify(mockStore.orders));
+  safeSetLocalStorage('tne_products', JSON.stringify(mockStore.products));
+  safeSetLocalStorage('tne_users', JSON.stringify(mockStore.users));
+  safeSetLocalStorage('tne_atelier_options', JSON.stringify(mockStore.atelierOptions));
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('tne_db_update'));
@@ -330,7 +353,7 @@ export const syncCloudStateOnLoad = async () => {
 
       const mergedProducts = Array.from(combinedMap.values());
       mockStore.products = mergedProducts;
-      localStorage.setItem('tne_products', JSON.stringify(mergedProducts));
+      safeSetLocalStorage('tne_products', JSON.stringify(mergedProducts));
 
       // 3. If client had local products missing from server, push complete merged list to /api/sync immediately!
       if (hasNewLocalProductsToPush) {
@@ -351,7 +374,7 @@ export const syncCloudStateOnLoad = async () => {
         data.orders.forEach(o => existingOrdersMap.set(o.id, o));
 
         mockStore.orders = Array.from(existingOrdersMap.values());
-        localStorage.setItem('tne_orders', JSON.stringify(mockStore.orders));
+        safeSetLocalStorage('tne_orders', JSON.stringify(mockStore.orders));
       }
 
       if (data && Array.isArray(data.users) && data.users.length > 0) {
