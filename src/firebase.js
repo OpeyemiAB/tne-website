@@ -33,7 +33,7 @@ try {
 }
 
 // Client-Side WebP/JPEG Compression Helper (Mobile Safari & Chrome compatible)
-export const compressImageToWebP = (fileOrDataUrl, maxDimension = 800, quality = 0.72) => {
+export const compressImageToWebP = (fileOrDataUrl, maxDimension = 600, quality = 0.65) => {
   return new Promise((resolve) => {
     if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('http') && !fileOrDataUrl.startsWith('data:')) {
       return resolve(fileOrDataUrl);
@@ -152,29 +152,27 @@ export const uploadImageToStorage = async (fileOrDataUrl, pathPrefix = 'products
   return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '';
 };
 
-// Parallel Batch Uploads (3-5 at a time) with visual progress updates
-export const uploadImagesInBatches = async (items, onProgress = () => {}, batchSize = 3) => {
+// Parallel Batch Uploads (1-by-1 sequential to save RAM) with visual progress updates
+export const uploadImagesInBatches = async (items, onProgress = () => {}) => {
   const results = [];
   const total = items.length;
 
-  for (let i = 0; i < total; i += batchSize) {
-    const chunk = items.slice(i, i + batchSize);
+  for (let i = 0; i < total; i++) {
+    const item = items[i];
+    const currentIndex = i + 1;
+    onProgress({ current: currentIndex, total, percentage: Math.round((currentIndex / total) * 100) });
 
-    const batchResults = await Promise.all(
-      chunk.map(async (item, chunkIndex) => {
-        const currentIndex = i + chunkIndex + 1;
-        onProgress({ current: currentIndex, total, percentage: Math.round((currentIndex / total) * 100) });
+    try {
+      // 1. Compress to lightweight WebP (max 600px width, 0.65 quality -> ~40KB per image)
+      const compressed = await compressImageToWebP(item, 600, 0.65);
 
-        // 1. Compress to WebP
-        const compressed = await compressImageToWebP(item, 1200, 0.8);
-
-        // 2. Upload to Cloud Storage
-        const downloadUrl = await uploadImageToStorage(compressed, 'products');
-        return downloadUrl;
-      })
-    );
-
-    results.push(...batchResults);
+      // 2. Upload to Cloud Storage or fallback
+      const downloadUrl = await uploadImageToStorage(compressed, 'products');
+      results.push(downloadUrl || (typeof item === 'string' ? item : ''));
+    } catch (e) {
+      console.warn(`Image ${currentIndex} compression warning:`, e);
+      results.push(typeof item === 'string' ? item : '');
+    }
   }
 
   return results;
