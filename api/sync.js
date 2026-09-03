@@ -114,6 +114,20 @@ export default async function handler(req, res) {
           });
         }
 
+        // Quick Webhook Product Upload (from Google Forms or external triggers)
+        if (body.newProduct) {
+          const p = body.newProduct;
+          if (p && p.name) {
+            if (!p.id) p.id = `prod-${Date.now()}`;
+            const existingIdx = currentStore.products.findIndex(item => String(item.id) === String(p.id));
+            if (existingIdx > -1) {
+              currentStore.products[existingIdx] = p;
+            } else {
+              currentStore.products.unshift(p);
+            }
+          }
+        }
+
         // Direct override for dropped products
         if (body.overrideProducts && Array.isArray(body.products)) {
           currentStore.products = body.products;
