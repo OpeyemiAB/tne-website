@@ -119,6 +119,24 @@ export default async function handler(req, res) {
           const p = body.newProduct;
           if (p && p.name) {
             if (!p.id) p.id = `prod-${Date.now()}`;
+
+            // Auto-convert Google Drive links to direct viewable image URLs
+            let rawImg = p.image || (p.images && p.images[0]) || '';
+            if (rawImg.includes('drive.google.com') && rawImg.includes('/d/')) {
+              const driveId = rawImg.split('/d/')[1].split('/')[0];
+              rawImg = `https://lh3.googleusercontent.com/d/${driveId}`;
+            } else if (!rawImg) {
+              rawImg = 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80';
+            }
+
+            p.image = rawImg;
+            p.images = [rawImg];
+            p.imageUrls = [rawImg];
+            p.price = Number(p.price) || 0;
+            p.category = p.category || 'Etched by TNE';
+            p.customizable = p.customizable !== false;
+            p.inStock = p.inStock !== false;
+
             const existingIdx = currentStore.products.findIndex(item => String(item.id) === String(p.id));
             if (existingIdx > -1) {
               currentStore.products[existingIdx] = p;
