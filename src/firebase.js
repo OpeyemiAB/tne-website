@@ -555,15 +555,14 @@ export const addProductToDb = async (productData, onProgress = () => {}) => {
       const docRef = await addDoc(collection(db, "products"), newProduct);
       return docRef.id;
     } catch (err) {
-      console.error("Firestore Product Write Error:", err);
-      throw new Error(`Failed to save product to Firestore: ${err.message}`);
+      console.warn("Firestore Product Write Error (falling back to cloud syncer):", err);
     }
-  } else {
-    newProduct.id = `prod-${Date.now()}`;
-    mockStore.products.push(newProduct);
-    syncMock();
-    return newProduct.id;
   }
+
+  newProduct.id = `prod-${Date.now()}`;
+  mockStore.products.unshift(newProduct);
+  syncMock();
+  return newProduct.id;
 };
 
 export const editProductInDb = async (productId, updatedData, onProgress = () => {}) => {
