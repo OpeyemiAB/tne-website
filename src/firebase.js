@@ -604,14 +604,14 @@ export const editProductInDb = async (productId, updatedData, onProgress = () =>
     try {
       const docRef = doc(db, "products", String(productId));
       await updateDoc(docRef, finalUpdate);
+      return;
     } catch (err) {
-      console.error("Firestore Product Edit Error:", err);
-      throw new Error(`Failed to update product in Firestore: ${err.message}`);
+      console.warn("Firestore Product Edit Warning (falling back to syncer):", err);
     }
-  } else {
-    mockStore.products = mockStore.products.map(p => String(p.id) === String(productId) ? { ...p, ...finalUpdate } : p);
-    syncMock();
   }
+
+  mockStore.products = mockStore.products.map(p => String(p.id) === String(productId) ? { ...p, ...finalUpdate } : p);
+  syncMock();
 };
 
 export const deleteProductFromDb = async (productId) => {
