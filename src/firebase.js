@@ -169,6 +169,39 @@ const mockStore = {
   orders: JSON.parse(localStorage.getItem('tne_orders') || '[]'),
   products: JSON.parse(localStorage.getItem('tne_products') || JSON.stringify([
     {
+      id: 'prod-necklace-scan',
+      name: 'Necklace Scan',
+      price: 12000,
+      image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80',
+      images: ['https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80'],
+      category: 'Etched by TNE',
+      description: 'Scannable barcode custom gold necklace.',
+      customizable: true,
+      inStock: true
+    },
+    {
+      id: 'prod-canvas',
+      name: 'Canvas',
+      price: 670,
+      image: 'https://images.unsplash.com/photo-1513885535751-8b9238bd475a?auto=format&fit=crop&w=400&q=80',
+      images: ['https://images.unsplash.com/photo-1513885535751-8b9238bd475a?auto=format&fit=crop&w=400&q=80'],
+      category: 'Etched by TNE',
+      description: 'Custom printed canvas item.',
+      customizable: true,
+      inStock: true
+    },
+    {
+      id: 'prod-boxed-combo',
+      name: 'Boxed customize bracelet and wristwatch',
+      price: 25000,
+      image: 'https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=400&q=80',
+      images: ['https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=400&q=80'],
+      category: 'Etched by TNE',
+      description: 'Combo gift box with custom watch and bracelet.',
+      customizable: true,
+      inStock: true
+    },
+    {
       id: 'prod-customize-bracelet',
       name: 'Customize bracelet',
       price: 7000,
@@ -262,6 +295,20 @@ const safeSetLocalStorage = (key, value) => {
   }
 };
 
+// Real-Time Cross-Tab & Incognito Broadcast Sync Channel
+const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('tne_sync_channel') : null;
+
+if (syncChannel) {
+  syncChannel.onmessage = (event) => {
+    if (event && event.data && Array.isArray(event.data.products)) {
+      mockStore.products = event.data.products;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('tne_db_update'));
+      }
+    }
+  };
+}
+
 // Non-Destructive Multi-device Central Cloud Syncer (/api/sync)
 const syncMock = () => {
   safeSetLocalStorage('tne_orders', JSON.stringify(mockStore.orders));
@@ -271,6 +318,12 @@ const syncMock = () => {
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('tne_db_update'));
+  }
+
+  if (syncChannel) {
+    try {
+      syncChannel.postMessage({ products: mockStore.products });
+    } catch (e) {}
   }
 
   // Push updates to central cloud API
