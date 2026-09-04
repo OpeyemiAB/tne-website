@@ -26,7 +26,13 @@ export default function ProductDetails() {
   const [reviewsList, setReviewsList] = useState([]);
 
   useEffect(() => {
-    const prod = products.find(p => String(p.id) === String(productId));
+    const cleanParam = String(productId || '').trim().toLowerCase();
+    const prod = products.find(p => {
+      const pId = String(p.id || '').trim().toLowerCase();
+      const pNameSlug = String(p.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      return pId === cleanParam || pNameSlug === cleanParam || pId === `prod-${cleanParam}`;
+    });
+
     if (prod) {
       setProduct(prod);
       setReviewsList(prod.reviews || []);
