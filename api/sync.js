@@ -7,49 +7,70 @@ const TEMP_FILE_PATH = path.join('/tmp', 'tne_store.json');
 const defaultStore = {
   products: [
     {
+      id: 'prod-necklace-scan',
+      name: 'Necklace Scan',
+      price: 12000,
+      image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80',
+      images: ['https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80'],
+      category: 'Etched by TNE',
+      description: 'Scannable barcode custom gold necklace.',
+      customizable: true,
+      inStock: true
+    },
+    {
+      id: 'prod-canvas',
+      name: 'Canvas',
+      price: 670,
+      image: 'https://images.unsplash.com/photo-1513885535751-8b9238bd475a?auto=format&fit=crop&w=400&q=80',
+      images: ['https://images.unsplash.com/photo-1513885535751-8b9238bd475a?auto=format&fit=crop&w=400&q=80'],
+      category: 'Etched by TNE',
+      description: 'Custom printed canvas item.',
+      customizable: true,
+      inStock: true
+    },
+    {
+      id: 'prod-boxed-combo',
+      name: 'Boxed customize bracelet and wristwatch',
+      price: 25000,
+      image: 'https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=400&q=80',
+      images: ['https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=400&q=80'],
+      category: 'Etched by TNE',
+      description: 'Combo gift box with custom watch and bracelet.',
+      customizable: true,
+      inStock: true
+    },
+    {
       id: 'prod-customize-bracelet',
       name: 'Customize bracelet',
       price: 7000,
       image: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=400&q=80',
-      images: [
-        'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=400&q=80'
-      ],
+      images: ['https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=400&q=80'],
       category: 'Etched by TNE',
       description: 'Custom engraved gold bar name bracelet with initial charms.',
       customizable: true,
-      features: ['18k Gold Plated', 'Custom name engraving', 'Monique & Signature charms'],
-      inStock: true,
-      reviews: [{ rating: 5, comment: 'Engraving came out super sharp and beautiful!', user: 'Monique' }]
+      inStock: true
     },
     {
       id: 'prod-customize-journal',
       name: 'Customize journal',
       price: 17000,
       image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
-      images: [
-        'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80'
-      ],
+      images: ['https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80'],
       category: 'Etched by TNE',
-      description: 'Custom laser engraved wooden journal and pen set with personalized photo and Bible verse.',
+      description: 'Custom laser engraved wooden journal and pen set.',
       customizable: true,
-      features: ['Natural bamboo wood cover', 'Custom photo engraving', 'Includes matching engraved pen'],
-      inStock: true,
-      reviews: [{ rating: 5, comment: 'Purchased for Pastor Popoola, amazing quality!', user: 'Grace' }]
+      inStock: true
     },
     {
       id: 'prod-one',
       name: 'one',
       price: 15000,
       image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=400&q=80',
-      images: [
-        'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=400&q=80'
-      ],
+      images: ['https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=400&q=80'],
       category: 'Etched by TNE',
       description: 'Custom TNE Personalized Gift item.',
       customizable: true,
-      features: ['Custom laser etching'],
-      inStock: true,
-      reviews: []
+      inStock: true
     }
   ],
   orders: [],
