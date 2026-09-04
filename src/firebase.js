@@ -638,13 +638,15 @@ export const userUploadedProductsList = [
 
 export const restoreAllProductsToLive = async () => {
   localStorage.removeItem('tne_dropped_products');
-  mockStore.products = [...userUploadedProductsList];
+  // Preserve whatever products are currently in mockStore (with user's updated images)
+  const currentProds = (mockStore.products && mockStore.products.length > 0) ? mockStore.products : userUploadedProductsList;
+  mockStore.products = [...currentProds];
   safeSetLocalStorage('tne_products', JSON.stringify(mockStore.products));
   try {
     await fetch('/api/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clearDroppedIds: true, products: userUploadedProductsList, overrideProducts: true })
+      body: JSON.stringify({ clearDroppedIds: true, products: currentProds, overrideProducts: true })
     });
   } catch (e) {}
   if (typeof window !== 'undefined') {
