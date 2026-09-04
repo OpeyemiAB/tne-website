@@ -355,53 +355,6 @@ export default function AdminDashboard() {
         >
           <Users size={18} /> Staff & Accounts
         </button>
-        <button 
-          type="button"
-          onClick={async () => {
-            const { restoreAllProductsToLive } = await import('../firebase');
-            await restoreAllProductsToLive();
-            if (showToast) showToast("✓ All 22 catalog products restored live to the storefront!", "success");
-            setTimeout(() => window.location.reload(), 600);
-          }}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            backgroundColor: 'rgba(56,158,13,0.1)',
-            color: '#389e0d',
-            border: '1px solid #389e0d',
-            borderRadius: '6px',
-            padding: '0.5rem 0.85rem',
-            fontSize: '0.8rem',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          🔄 Sync All {products.length} Products Live
-        </button>
-        <button 
-          type="button"
-          onClick={() => {
-            localStorage.clear();
-            if (showToast) showToast("Browser cache cleared cleanly! Refreshing...", "success");
-            setTimeout(() => window.location.reload(), 600);
-          }}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            backgroundColor: '#fffbe6',
-            color: '#d46b08',
-            border: '1px solid #ffe58f',
-            borderRadius: '6px',
-            padding: '0.5rem 0.85rem',
-            fontSize: '0.8rem',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          🧹 Clear Storage Cache
-        </button>
       </div>
 
       {/* TABS CONTAINER */}
