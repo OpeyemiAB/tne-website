@@ -10,6 +10,7 @@ import {
   getAtelierOptionsFromDb,
   updateAtelierOptionsInDb,
   getUsersSync,
+  userUploadedProductsList,
   subscribeToProducts,
   subscribeToOrders
 } from '../firebase';
@@ -19,7 +20,16 @@ const GiftingContext = createContext();
 export const useGifting = () => useContext(GiftingContext);
 
 export const GiftingProvider = ({ children }) => {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => {
+    try {
+      const stored = localStorage.getItem('tne_products');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return userUploadedProductsList;
+  });
   const [orders, setOrders] = useState([]);
   const [atelierOptions, setAtelierOptions] = useState({ boxSizes: [], ribbons: [], cards: [] });
   const [currentUser, setCurrentUser] = useState(() => JSON.parse(localStorage.getItem('tne_current_user') || 'null'));
