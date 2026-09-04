@@ -324,8 +324,14 @@ export const syncCloudStateOnLoad = async () => {
               if (p && p.id && !droppedSet.has(String(p.id))) {
                 if (!combinedMap.has(String(p.id))) {
                   hasNewLocalProductsToPush = true;
+                  combinedMap.set(String(p.id), p);
+                } else {
+                  // Prefer server product if server has explicit http/file image path
+                  const serverProd = combinedMap.get(String(p.id));
+                  if (serverProd && serverProd.image && !serverProd.image.startsWith('data:')) {
+                    combinedMap.set(String(p.id), { ...p, image: serverProd.image, images: serverProd.images || [serverProd.image] });
+                  }
                 }
-                combinedMap.set(String(p.id), p);
               }
             });
           }
