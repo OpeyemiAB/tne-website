@@ -244,24 +244,17 @@ const safeSetLocalStorage = (key, value) => {
   try {
     localStorage.setItem(key, value);
   } catch (e) {
-    console.warn(`localStorage quota exceeded for ${key}. Applying emergency 15KB payload compression...`);
+    console.warn(`localStorage quota exceeded for ${key}. Compressing products for local storage...`);
     try {
       if (key === 'tne_products' && Array.isArray(mockStore.products)) {
-        // Strip heavy base64 strings for localStorage backup so size is < 20KB
-        const tinyProducts = mockStore.products.map(p => {
-          const sanitizeImg = (img) => (typeof img === 'string' && img.startsWith('data:')) 
-            ? 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80' 
-            : img;
-          return {
-            ...p,
-            image: sanitizeImg(p.image),
-            images: Array.isArray(p.images) ? p.images.map(sanitizeImg) : [sanitizeImg(p.image)],
-            imageUrls: Array.isArray(p.imageUrls) ? p.imageUrls.map(sanitizeImg) : [sanitizeImg(p.image)]
-          };
-        });
-        localStorage.setItem(key, JSON.stringify(tinyProducts));
-      } else {
-        localStorage.removeItem(key);
+        // Keep actual user photo intact, trimming only if excessively large
+        const compressedProducts = mockStore.products.map(p => ({
+          ...p,
+          image: typeof p.image === 'string' && p.image.length > 80000 ? p.image.substring(0, 80000) : p.image,
+          images: Array.isArray(p.images) ? p.images.map(img => typeof img === 'string' && img.length > 80000 ? img.substring(0, 80000) : img) : p.images,
+          imageUrls: Array.isArray(p.imageUrls) ? p.imageUrls.map(img => typeof img === 'string' && img.length > 80000 ? img.substring(0, 80000) : img) : p.imageUrls
+        }));
+        localStorage.setItem(key, JSON.stringify(compressedProducts));
       }
     } catch (innerErr) {
       console.warn("Storage quota bypass active.");
