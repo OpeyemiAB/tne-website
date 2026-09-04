@@ -429,13 +429,8 @@ export const syncCloudStateOnLoad = async () => {
       }
     }
   } catch (e) {}
-};
+// Run sync once on initial page load (no heavy repeating background loops to save bandwidth/credits)
 syncCloudStateOnLoad();
-
-// Rapid background poll every 2 seconds for zero-delay multi-device & Incognito sync
-if (typeof window !== 'undefined') {
-  setInterval(syncCloudStateOnLoad, 2000);
-}
 
 // Reset orders and users for clean start
 export const resetDatabaseOrdersAndUsers = async () => {
