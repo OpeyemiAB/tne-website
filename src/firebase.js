@@ -614,7 +614,23 @@ export const editProductInDb = async (productId, updatedData, onProgress = () =>
   }
 
   mockStore.products = mockStore.products.map(p => String(p.id) === String(productId) ? { ...p, ...finalUpdate } : p);
-  syncMock();
+  safeSetLocalStorage('tne_products', JSON.stringify(mockStore.products));
+
+  // Push edited product directly to server API immediately so it persists across refreshes & Incognito
+  try {
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        products: mockStore.products,
+        overrideProducts: true
+      })
+    }).catch(() => {});
+  } catch (e) {}
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('tne_db_update'));
+  }
 };
 
 export const userUploadedProductsList = [
