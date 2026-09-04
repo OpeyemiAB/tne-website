@@ -135,6 +135,10 @@ export default function ProductDetails() {
             <img 
               src={currentActiveImg} 
               alt={product.name}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = DEFAULT_FALLBACK_IMG;
+              }}
               style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
             />
 
