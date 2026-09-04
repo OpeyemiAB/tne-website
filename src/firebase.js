@@ -560,7 +560,24 @@ export const addProductToDb = async (productData, onProgress = () => {}) => {
 
   newProduct.id = `prod-${Date.now()}`;
   mockStore.products.unshift(newProduct);
-  syncMock();
+  safeSetLocalStorage('tne_products', JSON.stringify(mockStore.products));
+  
+  // Push newly created product to server API immediately so it is permanently saved across all devices
+  try {
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        products: mockStore.products,
+        overrideProducts: true
+      })
+    }).catch(() => {});
+  } catch (e) {}
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('tne_db_update'));
+  }
+
   return newProduct.id;
 };
 
