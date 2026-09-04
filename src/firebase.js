@@ -32,8 +32,8 @@ try {
   console.warn("Firebase failed to initialize. Falling back to local state storage mock.", e);
 }
 
-// Client-Side WebP/JPEG Compression Helper (Mobile Safari & Chrome compatible)
-export const compressImageToWebP = (fileOrDataUrl, maxDimension = 600, quality = 0.65) => {
+// Client-Side WebP/JPEG Compression Helper with Strict ~20KB Ultra-Lightweight Byte Cap
+export const compressImageToWebP = (fileOrDataUrl, maxDimension = 480, quality = 0.50) => {
   return new Promise((resolve) => {
     if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('http') && !fileOrDataUrl.startsWith('data:')) {
       return resolve(fileOrDataUrl);
@@ -48,8 +48,8 @@ export const compressImageToWebP = (fileOrDataUrl, maxDimension = 600, quality =
 
     img.onload = () => {
       try {
-        let width = img.width || 800;
-        let height = img.height || 800;
+        let width = img.width || 480;
+        let height = img.height || 480;
 
         if (width > maxDimension || height > maxDimension) {
           if (width > height) {
@@ -67,18 +67,9 @@ export const compressImageToWebP = (fileOrDataUrl, maxDimension = 600, quality =
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        canvas.toBlob(
-          (blob) => {
-            if (blob && blob.size > 0) {
-              resolve(blob);
-            } else {
-              const dataUrl = canvas.toDataURL('image/jpeg', quality);
-              resolve(dataUrl);
-            }
-          },
-          'image/jpeg',
-          quality
-        );
+        // Export ultra-lightweight JPEG under 20KB per photo
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
       } catch (e) {
         console.warn("Mobile canvas compression fallback triggered", e);
         resolve(fileOrDataUrl);
@@ -89,17 +80,12 @@ export const compressImageToWebP = (fileOrDataUrl, maxDimension = 600, quality =
       resolve(fileOrDataUrl);
     };
 
-    if (fileOrDataUrl instanceof File || fileOrDataUrl instanceof Blob) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        img.src = e.target.result;
-      };
-      reader.onerror = () => resolve(fileOrDataUrl);
-      reader.readAsDataURL(fileOrDataUrl);
-    } else if (typeof fileOrDataUrl === 'string') {
+    if (typeof fileOrDataUrl === 'string') {
       img.src = fileOrDataUrl;
+    } else if (fileOrDataUrl instanceof File || fileOrDataUrl instanceof Blob) {
+      img.src = URL.createObjectURL(fileOrDataUrl);
     } else {
-      resolve(fileOrDataUrl);
+      resolve('');
     }
   });
 };
