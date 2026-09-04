@@ -105,6 +105,10 @@ export default async function handler(req, res) {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (body) {
+        if (body.clearDroppedIds) {
+          currentStore.droppedIds = [];
+        }
+
         if (body.droppedIds && Array.isArray(body.droppedIds)) {
           if (!currentStore.droppedIds) currentStore.droppedIds = [];
           body.droppedIds.forEach(id => {

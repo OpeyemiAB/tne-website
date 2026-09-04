@@ -100,6 +100,10 @@ exports.handler = async (event, context) => {
     try {
       const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
       if (body) {
+        if (body.clearDroppedIds) {
+          currentStore.droppedIds = [];
+        }
+
         if (body.droppedIds && Array.isArray(body.droppedIds)) {
           if (!currentStore.droppedIds) currentStore.droppedIds = [];
           body.droppedIds.forEach(id => {

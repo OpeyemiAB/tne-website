@@ -600,6 +600,20 @@ export const editProductInDb = async (productId, updatedData, onProgress = () =>
   syncMock();
 };
 
+export const restoreAllProductsToLive = async () => {
+  localStorage.removeItem('tne_dropped_products');
+  try {
+    await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clearDroppedIds: true })
+    });
+  } catch (e) {}
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('tne_db_update'));
+  }
+};
+
 export const deleteProductFromDb = async (productId) => {
   const cleanId = String(productId);
 
