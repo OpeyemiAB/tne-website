@@ -306,7 +306,7 @@ export const syncCloudStateOnLoad = async () => {
       }
 
       // 1. Load server products (filtering dropped items)
-      if (data && Array.isArray(data.products)) {
+      if (data && Array.isArray(data.products) && data.products.length > 0) {
         data.products.forEach(p => {
           if (p && p.id && !droppedSet.has(String(p.id))) {
             combinedMap.set(String(p.id), p);
@@ -314,12 +314,12 @@ export const syncCloudStateOnLoad = async () => {
         });
       }
 
-      // 2. Merge client localStorage products (filtering dropped items)
+      // 2. Merge client localStorage products only if they are valid & not dropped
       const localSavedStr = localStorage.getItem('tne_products');
       if (localSavedStr) {
         try {
           const localProds = JSON.parse(localSavedStr);
-          if (Array.isArray(localProds)) {
+          if (Array.isArray(localProds) && localProds.length > 0) {
             localProds.forEach(p => {
               if (p && p.id && !droppedSet.has(String(p.id))) {
                 if (!combinedMap.has(String(p.id))) {
@@ -332,7 +332,7 @@ export const syncCloudStateOnLoad = async () => {
         } catch (e) {}
       }
 
-      const mergedProducts = Array.from(combinedMap.values());
+      const mergedProducts = combinedMap.size > 0 ? Array.from(combinedMap.values()) : mockStore.products.filter(p => !droppedSet.has(String(p.id)));
       mockStore.products = mergedProducts;
       safeSetLocalStorage('tne_products', JSON.stringify(mergedProducts));
 
