@@ -87,7 +87,7 @@ export default function ProductDetails() {
   };
 
   const handleWhatsAppOrder = () => {
-    const number = "2349034567890";
+    const number = "2348133231667";
     let message = `Hello TNE! I would like to order: ${product.name} (Qty: ${quantity}).`;
     if (product.customizable) {
       if (engraveName) message += `\nEngraving Name: ${engraveName}`;
